@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm-9_x", "openssl"]
+aptPkgs = ["libssl-dev", "ca-certificates"]
+
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npx prisma generate", "npm run build"]
+
+[start]
+cmd = "npm run start"
