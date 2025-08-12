@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "A real-time collaborative web application for managing Ultimate Frisbee defensive line matchups and tracking game statistics.",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
     "dev": "echo 'Please run dev from frontend or backend directories'",
     "build": "echo 'Please run build from frontend or backend directories'",
