@@ -44,7 +44,7 @@ router.get('/game/:gameId/json', authenticateToken, async (req: AuthRequest, res
     const isMember = await prisma.teamMember.findFirst({
       where: {
         teamId: game.teamId,
-        userId: req.user!.userId
+        userId: req.user!.id
       }
     });
 
@@ -108,7 +108,7 @@ router.get('/game/:gameId/json', authenticateToken, async (req: AuthRequest, res
         jerseyNumber: p.jerseyNumber
       })),
       points: game.points.map(p => ({
-        number: p.number,
+        number: p.pointNumber,
         gotBreak: p.gotBreak,
         windSpeed: p.windSpeed,
         windDirection: p.windDirection,
@@ -160,7 +160,7 @@ router.get('/game/:gameId/csv', authenticateToken, async (req: AuthRequest, res,
     const isMember = await prisma.teamMember.findFirst({
       where: {
         teamId: game.teamId,
-        userId: req.user!.userId
+        userId: req.user!.id
       }
     });
 
@@ -178,7 +178,7 @@ router.get('/game/:gameId/csv', authenticateToken, async (req: AuthRequest, res,
           'Opponent': game.opponent || '',
           'Location': game.location || '',
           'Date': game.gameDate?.toISOString() || '',
-          'Point #': point.number,
+          'Point #': point.pointNumber,
           'Got Break': point.gotBreak ? 'Yes' : 'No',
           'Wind Speed': point.windSpeed || '',
           'Wind Direction': point.windDirection || '',
@@ -239,7 +239,7 @@ router.get('/team/:teamId/roster/csv', authenticateToken, async (req: AuthReques
     const isMember = await prisma.teamMember.findFirst({
       where: {
         teamId: team.id,
-        userId: req.user!.userId
+        userId: req.user!.id
       }
     });
 
@@ -293,7 +293,7 @@ router.get('/team/:teamId/stats', authenticateToken, async (req: AuthRequest, re
     const isMember = await prisma.teamMember.findFirst({
       where: {
         teamId: team.id,
-        userId: req.user!.userId
+        userId: req.user!.id
       }
     });
 
