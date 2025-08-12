@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./test.db"
+}
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  username       String         @unique
+  password       String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  teams          TeamMember[]
+  createdGames   Game[]
+  gameSessions   GameSession[]
+  activities     Activity[]
+  
+  @@index([email])
+  @@index([username])
+}
+
+model Team {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  inviteCode     String         @unique @default(cuid())
+  description    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  members        TeamMember[]
+  defenders      Defender[]
+  games          Game[]
+  
+  @@index([slug])
+  @@index([inviteCode])
+}
+
+model TeamMember {
+  id             String         @id @default(cuid())
+  userId         String
+  teamId         String
+  role           String         @default("MEMBER")
+  joinedAt       DateTime       @default(now())
+  
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+}
+
+model Defender {
+  id             String         @id @default(cuid())
+  name           String
+  teamId         String
+  jerseyNumber   String?
+  position       String?
+  notes          String?
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  matchups       Matchup[]
+  statistics     DefenderStats[]
+  
+  @@index([teamId])
+  @@index([name])
+}
+
+model Game {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  shareCode      String         @unique @default(cuid())
+  teamId         String
+  createdById    String
+  opponent       String?
+  location       String?
+  gameDate       DateTime?
+  isPublic       Boolean        @default(false)
+  status         String         @default("SETUP")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy      User           @relation(fields: [createdById], references: [id])
+  offensivePlayers OffensivePlayer[]
+  points         Point[]
+  sessions       GameSession[]
+  activities     Activity[]
+  
+  @@index([slug])
+  @@index([shareCode])
+  @@index([teamId])
+  @@index([createdById])
+}
+
+model OffensivePlayer {
+  id             String         @id @default(cuid())
+  gameId         String
+  name           String
+  position       String         @default("CUTTER")
+  jerseyNumber   String?
+  order          Int            @default(0)
+  isBench        Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  matchups       Matchup[]
+  
+  @@index([gameId])
+}
+
+model Point {
+  id             String         @id @default(cuid())
+  gameId         String
+  pointNumber    Int
+  gotBreak       Boolean
+  notes          String?
+  windSpeed      Float?
+  windDirection  String?
+  startedAt      DateTime       @default(now())
+  completedAt    DateTime?
+  
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  matchups       Matchup[]
+  
+  @@unique([gameId, pointNumber])
+  @@index([gameId])
+}
+
+model Matchup {
+  id                String          @id @default(cuid())
+  pointId           String
+  offensivePlayerId String
+  defenderId        String?
+  isActive          Boolean         @default(true)
+  result            String?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  
+  point             Point           @relation(fields: [pointId], references: [id], onDelete: Cascade)
+  offensivePlayer   OffensivePlayer @relation(fields: [offensivePlayerId], references: [id], onDelete: Cascade)
+  defender          Defender?       @relation(fields: [defenderId], references: [id])
+  
+  @@index([pointId])
+  @@index([offensivePlayerId])
+  @@index([defenderId])
+}
+
+model DefenderStats {
+  id             String         @id @default(cuid())
+  defenderId     String
+  gameId         String
+  pointsPlayed   Int            @default(0)
+  breaks         Int            @default(0)
+  noBreaks       Int            @default(0)
+  blocks         Int            @default(0)
+  turns          Int            @default(0)
+  
+  defender       Defender       @relation(fields: [defenderId], references: [id], onDelete: Cascade)
+  
+  @@unique([defenderId, gameId])
+  @@index([defenderId])
+  @@index([gameId])
+}
+
+model GameSession {
+  id             String         @id @default(cuid())
+  gameId         String
+  userId         String
+  socketId       String?
+  isActive       Boolean        @default(true)
+  lastPing       DateTime       @default(now())
+  joinedAt       DateTime       @default(now())
+  leftAt         DateTime?
+  
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([gameId, userId])
+  @@index([gameId])
+  @@index([userId])
+  @@index([socketId])
+}
+
+model Activity {
+  id             String         @id @default(cuid())
+  gameId         String
+  userId         String
+  type           String
+  description    String
+  metadata       String?
+  createdAt      DateTime       @default(now())
+  
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([gameId])
+  @@index([userId])
+  @@index([createdAt])
+}

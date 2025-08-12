@@ -1,0 +1,56 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "sleepApplication": false,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "services": {
+    "backend": {
+      "source": {
+        "repo": ".",
+        "branch": "main"
+      },
+      "build": {
+        "buildCommand": "cd backend && npm ci && npx prisma generate && npm run build",
+        "watchPatterns": [
+          "backend/**"
+        ]
+      },
+      "deploy": {
+        "startCommand": "cd backend && npx prisma migrate deploy && npm start",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 30
+      },
+      "envVars": {
+        "NODE_ENV": "production",
+        "PORT": "${{PORT}}"
+      }
+    },
+    "frontend": {
+      "source": {
+        "repo": ".",
+        "branch": "main"
+      },
+      "build": {
+        "buildCommand": "cd frontend && npm ci && npm run build",
+        "watchPatterns": [
+          "frontend/**"
+        ]
+      },
+      "deploy": {
+        "startCommand": "cd frontend && npx serve -s dist -l $PORT",
+        "healthcheckPath": "/",
+        "healthcheckTimeout": 30
+      },
+      "envVars": {
+        "VITE_API_URL": "${{BACKEND_URL}}/api",
+        "VITE_WS_URL": "${{BACKEND_URL}}"
+      }
+    }
+  }
+}
