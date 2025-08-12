@@ -16,6 +16,8 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
+!.env.production
 
 # Logs
 npm-debug.log*
@@ -40,10 +42,10 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-# Prisma
-backend/prisma/migrations/
+# Prisma - keep migrations for deployment
 backend/prisma/*.db
 backend/prisma/*.db-journal
+backend/dist/
 
 # Docker
 .docker/
@@ -68,3 +70,12 @@ temp/
 
 # Railway
 .railway/
+
+# Test and temporary files
+.test-pids
+.server-pids
+backend.log
+frontend.log
+test-app.js
+backend/venv/
+backend/__pycache__/
