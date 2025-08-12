@@ -9,7 +9,6 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "postinstall": "npm run prisma:generate",
     "test": "jest"
   },
   "dependencies": {
