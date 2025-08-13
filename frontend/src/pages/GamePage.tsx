@@ -678,6 +678,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           } else if (playerRow) {
             const targetPlayerId = playerRow.getAttribute('data-player-id');
             const isLastActive = playerRow.getAttribute('data-last-active') === 'true';
+            const isLastBench = playerRow.getAttribute('data-last-bench') === 'true';
             
             if (targetPlayerId && targetPlayerId !== touchInfo.player.id) {
               // Get fresh player data from game state
@@ -713,16 +714,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     insertIndex = targetIndex - 1;
                   }
                   
-                  // If dropping from bench to last active position, we want it right above bench
-                  // This means after the last active player in the reordered array
+                  // Special handling for last positions
                   if (isLastActive && draggedPlayer.isBench && !targetPlayer.isBench) {
-                    // Find where bench starts in the new array (after removal)
+                    // Dropping from bench to last active - insert right above bench
                     const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
-                    if (firstBenchIndex !== -1) {
-                      insertIndex = firstBenchIndex; // Insert right before first bench player
-                    } else {
-                      insertIndex = newPlayers.length; // No bench players, insert at end
-                    }
+                    insertIndex = firstBenchIndex !== -1 ? firstBenchIndex : newPlayers.length;
+                  } else if (isLastBench && !draggedPlayer.isBench && targetPlayer.isBench) {
+                    // Dropping from active to last bench - insert at end
+                    insertIndex = newPlayers.length;
                   }
                   
                   // Insert at new position
@@ -1367,9 +1366,13 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 <tr
                   id="bench-separator"
                   data-bench-separator="true"
-                  className={`${dragOverBench ? 'bg-blue-50' : ''} transition-all`}
+                  className={`transition-all ${
+                    dragOverBench && draggedPlayer && !draggedPlayer.isBench && game.offensivePlayers?.filter((p: any) => p.isBench).length === 0 
+                      ? 'bg-blue-100 ring-2 ring-blue-400' 
+                      : ''
+                  }`}
                   style={{
-                    borderBottom: dragOverBench && draggedPlayer && !draggedPlayer.isBench ? '3px solid #3E8EDE' : undefined
+                    borderBottom: dragOverBench && draggedPlayer && !draggedPlayer.isBench && game.offensivePlayers?.filter((p: any) => p.isBench).length > 0 ? '3px solid #3E8EDE' : undefined
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -1426,15 +1429,21 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 </tr>
                 
                 {/* Bench players */}
-                {game.offensivePlayers?.filter((p: any) => p.isBench).map((player: any, index: number) => (
+                {game.offensivePlayers?.filter((p: any) => p.isBench).map((player: any, index: number, benchArray: any[]) => {
+                  const isLastBench = index === benchArray.length - 1;
+                  const showBottomBorder = isLastBench && dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id && !draggedPlayer.isBench;
+                  
+                  return (
                   <tr 
                     key={player.id}
-                    data-player-id={player.id} 
+                    data-player-id={player.id}
+                    data-last-bench={isLastBench}
                     className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
                       isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                     }`}
                     style={{
-                      borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined,
+                      borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id && !showBottomBorder ? '3px solid #3E8EDE' : undefined,
+                      borderBottom: showBottomBorder ? '3px solid #3E8EDE' : undefined,
                       touchAction: isDragging ? 'none' : 'auto',
                       userSelect: isDragging ? 'none' : 'auto',
                       WebkitUserSelect: isDragging ? 'none' : 'auto'
