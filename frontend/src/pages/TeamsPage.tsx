@@ -266,25 +266,23 @@ export default function TeamsPage() {
                       <span>{team._count?.games || 0} games</span>
                     </div>
                     {team.inviteCode && (
-                      <div className="mt-3">
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-gray-700">Team Invite Code:</p>
-                              <p className="text-2xl font-mono font-bold text-blue-600">{team.inviteCode}</p>
-                            </div>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(team.inviteCode);
-                                alert('Invite code copied to clipboard!');
-                              }}
-                              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                            >
-                              Copy Code
-                            </button>
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Team Invite Code:</p>
+                            <p className="text-2xl font-mono font-bold text-blue-600">{team.inviteCode}</p>
                           </div>
-                          <p className="text-xs text-gray-600 mt-2">Share this code with teammates to let them join</p>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(team.inviteCode);
+                              alert('Invite code copied to clipboard!');
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                          >
+                            Copy Code
+                          </button>
                         </div>
+                        <p className="text-xs text-gray-600 mt-2">Share this code with teammates to let them join</p>
                       </div>
                     )}
                   </div>
@@ -323,7 +321,7 @@ export default function TeamsPage() {
 
                 {/* Edit Team Form */}
                 {editingTeam?.id === team.id && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <h4 className="text-sm font-semibold text-gray-700 mb-3">Edit Team Settings</h4>
                     <div className="space-y-3">
                       <input
@@ -389,7 +387,7 @@ export default function TeamsPage() {
 
                 {/* Invite Member Form */}
                 {showInviteMember === team.id && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Invite Team Member</h4>
                     <div className="flex space-x-2">
                       <input
