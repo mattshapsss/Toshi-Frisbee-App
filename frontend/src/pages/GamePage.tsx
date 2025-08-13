@@ -23,6 +23,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const [lastButtonClicked, setLastButtonClicked] = useState<string | null>(null);
   const [draggedDefender, setDraggedDefender] = useState<any | null>(null);
   const [dragOverPlayer, setDragOverPlayer] = useState<string | null>(null);
+  const [draggedPlayer, setDraggedPlayer] = useState<any | null>(null);
   const [pointStartTime, setPointStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -330,7 +331,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     setDragOverPlayer(null);
   };
 
-  const handlePlayerDrop = (e: React.DragEvent, playerId: string) => {
+  const handleDefenderDrop = (e: React.DragEvent, playerId: string) => {
     e.preventDefault();
     if (draggedDefender) {
       addDefenderToCurrentPoint(playerId, draggedDefender.id);
@@ -341,6 +342,41 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
   const handleDefenderDragEnd = () => {
     setDraggedDefender(null);
+    setDragOverPlayer(null);
+  };
+
+  // Player drag and drop handlers for swapping
+  const handlePlayerDragStart = (e: React.DragEvent, player: any) => {
+    setDraggedPlayer(player);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handlePlayerDragEnd = () => {
+    setDraggedPlayer(null);
+    setDragOverPlayer(null);
+  };
+
+  const handlePlayerDrop = async (e: React.DragEvent, targetPlayer: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (draggedPlayer && draggedPlayer.id !== targetPlayer.id) {
+      // Swap the bench status of the two players
+      try {
+        await updateOffensivePlayerMutation.mutateAsync({
+          playerId: draggedPlayer.id,
+          data: { isBench: targetPlayer.isBench }
+        });
+        await updateOffensivePlayerMutation.mutateAsync({
+          playerId: targetPlayer.id,
+          data: { isBench: draggedPlayer.isBench }
+        });
+      } catch (error) {
+        console.error('Error swapping players:', error);
+      }
+    }
+    
+    setDraggedPlayer(null);
     setDragOverPlayer(null);
   };
 
@@ -720,7 +756,22 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                   return (
                     <tr 
                       key={player.id} 
-                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} transition-all`}
+                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
+                        dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+                      }`}
+                      draggable={!isPublic}
+                      onDragStart={(e) => handlePlayerDragStart(e, player)}
+                      onDragEnd={handlePlayerDragEnd}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => handlePlayerDrop(e, player)}
+                      onDragEnter={(e) => {
+                        if (draggedPlayer && draggedPlayer.id !== player.id) {
+                          setDragOverPlayer(player.id);
+                        }
+                      }}
+                      onDragLeave={(e) => {
+                        if (e.currentTarget === e.target) setDragOverPlayer(null);
+                      }}
                     >
                       <td className="px-2 sm:px-4 py-3">
                         {editingPlayerId === player.id ? (
@@ -903,20 +954,146 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 
                 {/* Bench players */}
                 {game.offensivePlayers?.filter((p: any) => p.isBench).map((player: any, index: number) => (
-                  <tr key={player.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <tr 
+                    key={player.id} 
+                    className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
+                      dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+                    }`}
+                    draggable={!isPublic}
+                    onDragStart={(e) => handlePlayerDragStart(e, player)}
+                    onDragEnd={handlePlayerDragEnd}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handlePlayerDrop(e, player)}
+                    onDragEnter={(e) => {
+                      if (draggedPlayer && draggedPlayer.id !== player.id) {
+                        setDragOverPlayer(player.id);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget === e.target) setDragOverPlayer(null);
+                    }}
+                  >
                     <td className="px-2 sm:px-4 py-3">
                       <span className="font-medium text-gray-900">{player.name}</span>
                     </td>
                     <td className="px-2 sm:px-4 py-3">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPositionColor(player.position)}`}>
-                        {formatPosition(player.position)}
-                      </span>
+                      {!isPublic ? (
+                        <select
+                          value={player.position}
+                          onChange={(e) => updateOffensivePlayerMutation.mutate({
+                            playerId: player.id,
+                            data: { position: e.target.value }
+                          })}
+                          className={`px-2 py-1 text-xs font-medium rounded-full border-0 focus:outline-none w-full max-w-32 ${
+                            getPositionColor(player.position)
+                          }`}
+                        >
+                          {offensivePositions.map(pos => (
+                            <option key={pos} value={pos}>{formatPosition(pos)}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPositionColor(player.position)}`}>
+                          {formatPosition(player.position)}
+                        </span>
+                      )}
                     </td>
+                    {/* Available Defenders Column for Bench */}
                     <td className="px-2 sm:px-4 py-3">
-                      <span className="text-gray-400">Bench</span>
+                      <div className="min-h-10 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {player.availableDefenders?.map((ad: any) => {
+                            const isInAnyCurrentPoint = game.offensivePlayers?.some((p: any) => 
+                              p.currentPointDefender?.defenderId === ad.defender.id
+                            );
+                            return (
+                              <div 
+                                key={ad.id}
+                                className={`px-2 py-1 rounded-md text-xs flex items-center space-x-1 ${
+                                  isInAnyCurrentPoint ? 'opacity-50' : ''
+                                } text-white`}
+                                style={{ backgroundColor: '#3E8EDE' }}
+                              >
+                                <span>{ad.defender.name}</span>
+                                {!isPublic && (
+                                  <button
+                                    onClick={() => handleRemoveAvailableDefender(player.id, ad.defender.id)}
+                                    className="text-white opacity-75 hover:opacity-100"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {!isPublic && (
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddAvailableDefender(player.id, e.target.value);
+                                  e.target.value = '';
+                                }
+                              }}
+                              className="text-xs px-1 py-1 border rounded min-w-12"
+                              defaultValue=""
+                            >
+                              <option value="">+ Add</option>
+                              {defenders.filter((d: any) => 
+                                !player.availableDefenders?.some((ad: any) => ad.defender.id === d.id)
+                              ).map((defender: any) => (
+                                <option key={defender.id} value={defender.id}>{defender.name}</option>
+                              ))}
+                            </select>
+                          )}
+                          {(!player.availableDefenders || player.availableDefenders.length === 0) && !isPublic && (
+                            <span className="text-gray-400 text-xs">Add defenders</span>
+                          )}
+                        </div>
+                      </div>
                     </td>
+                    {/* Current Point Column for Bench */}
                     <td className="px-2 sm:px-4 py-3">
-                      <span className="text-gray-400">-</span>
+                      <div className="min-h-10 p-2 border-2 border-dashed border-emerald-300 rounded-lg bg-emerald-50">
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {player.currentPointDefender && (
+                            <div 
+                              className="bg-emerald-600 text-white px-2 py-1 rounded-md text-xs flex items-center justify-between"
+                            >
+                              <span>{player.currentPointDefender.defender.name}</span>
+                              {!isPublic && (
+                                <button
+                                  onClick={() => handleRemoveCurrentPointDefender(player.id)}
+                                  className="text-emerald-200 hover:text-white ml-1"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {!isPublic && (
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleSetCurrentPointDefender(player.id, e.target.value);
+                                  e.target.value = '';
+                                }
+                              }}
+                              className="text-xs px-1 py-1 border rounded min-w-12"
+                              defaultValue=""
+                            >
+                              <option value="">{player.currentPointDefender ? '↻ Replace' : '+ Select'}</option>
+                              {player.availableDefenders?.map((ad: any) => (
+                                <option key={ad.defender.id} value={ad.defender.id}>
+                                  {ad.defender.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {!player.currentPointDefender && !player.availableDefenders?.length && !isPublic && (
+                            <span className="text-gray-400 text-xs">Add defenders first</span>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     {!isPublic && (
                       <td className="px-2 sm:px-4 py-3">
