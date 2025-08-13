@@ -148,7 +148,7 @@ router.put('/game/:gameId', async (req: AuthRequest, res, next) => {
       
       // Emit events for removed current point defenders
       for (const cpd of currentPointDefenders) {
-        io.to(`game-${gameId}`).emit('current-point-defender-updated', {
+        io.to(`game:${gameId}`).emit('current-point-defender-updated', {
           offensivePlayerId: cpd.offensivePlayerId,
           defenderId: null,
         });
@@ -156,7 +156,7 @@ router.put('/game/:gameId', async (req: AuthRequest, res, next) => {
     }
     
     // Emit WebSocket event for selected defenders update
-    io.to(`game-${gameId}`).emit('selected-defenders-updated', selectedDefenders);
+    io.to(`game:${gameId}`).emit('selected-defenders-updated', selectedDefenders);
     
     res.json(selectedDefenders);
   } catch (error) {

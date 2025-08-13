@@ -87,7 +87,8 @@ router.post('/', async (req: AuthRequest, res, next) => {
     });
     
     // Emit WebSocket event
-    io.to(`team-${data.teamId}`).emit('line-created', line);
+    // Note: We don't emit WebSocket events for lines since they're team-level, not game-level
+    // and we don't have team room joining logic
     
     res.status(201).json(line);
   } catch (error) {
@@ -169,7 +170,7 @@ router.put('/:lineId', async (req: AuthRequest, res, next) => {
     });
     
     // Emit WebSocket event
-    io.to(`team-${existingLine.teamId}`).emit('line-updated', line);
+    // Note: We don't emit WebSocket events for lines since they're team-level, not game-level
     
     res.json(line);
   } catch (error) {
@@ -211,7 +212,7 @@ router.delete('/:lineId', async (req: AuthRequest, res, next) => {
     });
     
     // Emit WebSocket event
-    io.to(`team-${line.teamId}`).emit('line-deleted', { id: lineId });
+    // Note: We don't emit WebSocket events for lines since they're team-level, not game-level
     
     res.status(204).send();
   } catch (error) {

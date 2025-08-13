@@ -142,6 +142,10 @@ class SocketManager {
       this.emit('current-point-cleared', data);
     });
 
+    this.socket.on('selected-defenders-updated', (data) => {
+      this.emit('selected-defenders-updated', data);
+    });
+
     // Start heartbeat
     setInterval(() => {
       if (this.socket?.connected) {
