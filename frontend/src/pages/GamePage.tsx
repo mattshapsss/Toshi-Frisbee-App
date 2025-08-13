@@ -1598,7 +1598,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
