@@ -365,18 +365,28 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     e.stopPropagation();
     
     if (draggedPlayer && draggedPlayer.id !== targetPlayer.id) {
-      // Swap the bench status of the two players
-      try {
-        await updateOffensivePlayerMutation.mutateAsync({
-          playerId: draggedPlayer.id,
-          data: { isBench: targetPlayer.isBench }
-        });
-        await updateOffensivePlayerMutation.mutateAsync({
-          playerId: targetPlayer.id,
-          data: { isBench: draggedPlayer.isBench }
-        });
-      } catch (error) {
-        console.error('Error swapping players:', error);
+      // Only swap if they're in different sections (bench vs active)
+      if (draggedPlayer.isBench !== targetPlayer.isBench) {
+        try {
+          // Store original bench states
+          const draggedPlayerOriginalBench = draggedPlayer.isBench;
+          const targetPlayerOriginalBench = targetPlayer.isBench;
+          
+          // Swap the bench status of the two players
+          await updateOffensivePlayerMutation.mutateAsync({
+            playerId: draggedPlayer.id,
+            data: { isBench: targetPlayerOriginalBench }
+          });
+          await updateOffensivePlayerMutation.mutateAsync({
+            playerId: targetPlayer.id,
+            data: { isBench: draggedPlayerOriginalBench }
+          });
+          
+          // Invalidate query to refresh the UI
+          await queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
+        } catch (error) {
+          console.error('Error swapping players:', error);
+        }
       }
     }
     
@@ -503,6 +513,9 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       playerId: targetPlayer.id,
                       data: { isBench: draggedPlayerOriginalBench }
                     });
+                    
+                    // Invalidate query to refresh the UI
+                    await queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
                   } catch (error) {
                     console.error('Error swapping players:', error);
                   }
