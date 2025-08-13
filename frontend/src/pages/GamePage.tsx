@@ -704,9 +704,16 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     insertIndex = targetIndex - 1;
                   }
                   
-                  // If dropping from bench to last active position, insert after it (above bench)
-                  if (isLastActive && draggedPlayer.isBench) {
-                    insertIndex = insertIndex + 1;
+                  // If dropping from bench to last active position, we want it right above bench
+                  // This means after the last active player in the reordered array
+                  if (isLastActive && draggedPlayer.isBench && !targetPlayer.isBench) {
+                    // Find where bench starts in the new array (after removal)
+                    const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
+                    if (firstBenchIndex !== -1) {
+                      insertIndex = firstBenchIndex; // Insert right before first bench player
+                    } else {
+                      insertIndex = newPlayers.length; // No bench players, insert at end
+                    }
                   }
                   
                   // Insert at new position
