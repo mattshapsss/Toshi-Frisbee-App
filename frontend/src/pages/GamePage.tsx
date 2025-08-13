@@ -432,6 +432,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     e.preventDefault();
     e.stopPropagation();
     
+    console.log('handlePlayerDrop - draggedPlayer:', draggedPlayer?.name, 'targetPlayer:', targetPlayer?.name);
+    
     if (!draggedPlayer || draggedPlayer.id === targetPlayer.id) {
       setDraggedPlayer(null);
       setDragOverPlayer(null);
@@ -446,6 +448,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
     const targetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
     
+    console.log('Indices - dragged:', draggedIndex, 'target:', targetIndex);
+    
     if (draggedIndex === -1 || targetIndex === -1) {
       setDraggedPlayer(null);
       setDragOverPlayer(null);
@@ -458,6 +462,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     // Update bench status if moving between sections
     if (draggedPlayer.isBench !== targetPlayer.isBench) {
+      console.log('Moving between sections - updating bench status');
       draggedItem.isBench = targetPlayer.isBench;
       // Update bench status in backend
       await updateOffensivePlayerMutation.mutateAsync({
@@ -473,8 +478,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       insertIndex = targetIndex - 1;
     }
     
+    console.log('Insert index:', insertIndex);
+    
     // Insert at new position (before the target)
     newPlayers.splice(insertIndex, 0, draggedItem);
+    
+    console.log('New player order:', newPlayers.map((p: any) => p.name));
     
     // Call the reorder API with all players to maintain order
     await reorderOffensivePlayersMutation.mutateAsync({
@@ -1085,7 +1094,10 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                         isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                       }`}
                       style={{
-                        borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined
+                        borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined,
+                        touchAction: isDragging ? 'none' : 'auto',
+                        userSelect: isDragging ? 'none' : 'auto',
+                        WebkitUserSelect: isDragging ? 'none' : 'auto'
                       }}
                       draggable={!isPublic}
                       onDragStart={(e) => handlePlayerDragStart(e, player)}
@@ -1103,11 +1115,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       onTouchStart={(e) => !isPublic && handlePlayerTouchStart(e, player)}
                       onTouchMove={(e) => !isPublic && handlePlayerTouchMove(e)}
                       onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
-                      style={{
-                        touchAction: isDragging ? 'none' : 'auto',
-                        userSelect: isDragging ? 'none' : 'auto',
-                        WebkitUserSelect: isDragging ? 'none' : 'auto'
-                      }}
                     >
                       <td className="px-2 sm:px-4 py-3">
                         {editingPlayerId === player.id ? (
@@ -1345,7 +1352,10 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                     }`}
                     style={{
-                      borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined
+                      borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined,
+                      touchAction: isDragging ? 'none' : 'auto',
+                      userSelect: isDragging ? 'none' : 'auto',
+                      WebkitUserSelect: isDragging ? 'none' : 'auto'
                     }}
                     draggable={!isPublic}
                     onDragStart={(e) => handlePlayerDragStart(e, player)}
@@ -1363,11 +1373,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     onTouchStart={(e) => !isPublic && handlePlayerTouchStart(e, player)}
                     onTouchMove={(e) => !isPublic && handlePlayerTouchMove(e)}
                     onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
-                    style={{
-                      touchAction: isDragging ? 'none' : 'auto',
-                      userSelect: isDragging ? 'none' : 'auto',
-                      WebkitUserSelect: isDragging ? 'none' : 'auto'
-                    }}
                   >
                     <td className="px-2 sm:px-4 py-3">
                       <span className="font-medium text-gray-900">{player.name}</span>
