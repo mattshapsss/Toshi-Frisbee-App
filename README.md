@@ -1,41 +1,76 @@
 # Ultimate D-Line Manager
 
-A real-time collaborative web application for managing Ultimate Frisbee defensive line matchups and tracking game statistics.
+A real-time collaborative web application for managing Ultimate Frisbee defensive line matchups and tracking game statistics. Built for coaches and captains to efficiently manage defensive strategies during games.
 
-## Features
+## 🎯 Core Features
 
-- **Multi-user Real-time Collaboration**: Multiple users can manage the same game simultaneously with live updates via WebSockets
-- **Team Management**: Create teams, invite members, manage rosters
-- **Game Tracking**: Track defensive matchups, points, and player statistics
-- **Unique Game URLs**: Share games with unique URLs for easy access
-- **Authentication**: Secure JWT-based authentication system
-- **Statistics Dashboard**: Track player performance across games
-- **Mobile Responsive**: Works on all devices
+### Game Management
+- **Real-time Collaboration**: Multiple coaches/captains can manage the same game simultaneously with instant updates via WebSockets
+- **Drag-and-Drop Interface**: Intuitive player management with desktop and mobile support
+- **Offensive Player Management**: Add, edit, reorder players with positions (Handler/Cutter)
+- **Bench Management**: Separate active players and bench with visual indicators
+- **Point Tracking**: Track breaks, no-breaks, and detailed matchup history
 
-## Tech Stack
+### Team Features
+- **Team-based System**: All data belongs to teams, not individual users
+- **Simple Invite System**: 6-character team codes for easy team joining
+- **Role Management**: Owner, Admin, and Member roles with appropriate permissions
+- **Roster Management**: Bulk add defenders, track jersey numbers, and statistics
 
-- **Frontend**: React 18, TypeScript, Vite, TailwindCSS, Socket.io-client, Zustand, React Query
-- **Backend**: Node.js, Express, TypeScript, Prisma ORM, Socket.io
-- **Database**: PostgreSQL
-- **Cache**: Redis
-- **Deployment**: Docker, Railway
+### Statistics & Analytics
+- **Player Statistics**: Track throws, catches, drops, turnovers, and break percentages
+- **Game History**: View past games and performance metrics
+- **Point-by-Point Analysis**: Detailed breakdown of each defensive point
 
-## Quick Start with Docker
+### User Experience
+- **Mobile Optimized**: Full drag-and-drop support on mobile devices with touch gestures
+- **Public Game Sharing**: Share read-only game views with unique URLs
+- **Auto-save**: All changes are automatically saved
+- **Visual Feedback**: Blue line indicators for drop positions during drag operations
+
+## 🚀 Tech Stack
+
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for fast development and building
+- **TailwindCSS** for styling
+- **Zustand** for state management
+- **TanStack Query** (React Query) for data fetching
+- **Socket.io Client** for real-time updates
+- **React Router** for navigation
+
+### Backend
+- **Node.js** with Express and TypeScript
+- **Prisma ORM** for database management
+- **PostgreSQL** for data persistence
+- **Redis** for caching and session management
+- **Socket.io** for WebSocket connections
+- **JWT** for authentication
+- **Bcrypt** for password hashing
+
+### Deployment
+- **Railway** for production hosting
+- **Docker** for containerization
+- **GitHub Actions** for CI/CD
+
+## 📦 Quick Start with Docker
 
 ### Prerequisites
 - Docker and Docker Compose installed
 - Node.js 20+ (for local development without Docker)
+- Git
 
 ### 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/mattshapsss/Toshi-Frisbee-App.git
 cd "Toshi Frisbee App"
 ```
 
 ### 2. Set up environment variables
 ```bash
-# Copy the example env file
+# Copy the example env files
 cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 
 # Edit backend/.env with your settings
 # Important: Change JWT_SECRET in production!
@@ -65,7 +100,7 @@ docker-compose exec backend npx prisma migrate dev
 docker-compose exec backend npm run db:seed
 ```
 
-## Local Development (without Docker)
+## 💻 Local Development (without Docker)
 
 ### Backend Setup
 ```bash
@@ -91,11 +126,15 @@ npm run dev
 cd frontend
 npm install
 
+# Set up environment variables
+cp .env.example .env
+# Edit .env if needed
+
 # Start development server
 npm run dev
 ```
 
-## Database Management
+## 🗄️ Database Management
 
 ### Prisma Studio (GUI for database)
 ```bash
@@ -103,19 +142,20 @@ cd backend
 npx prisma studio
 ```
 
-### Create a new migration
+### Database Operations
 ```bash
+# Create a new migration
 cd backend
 npx prisma migrate dev --name your_migration_name
-```
 
-### Reset database
-```bash
-cd backend
+# Reset database (WARNING: Deletes all data)
 npx prisma migrate reset
+
+# Push schema changes without migration (development only)
+npx prisma db push
 ```
 
-## API Documentation
+## 📡 API Documentation
 
 ### Authentication Endpoints
 - `POST /api/auth/register` - Register new user
@@ -129,175 +169,250 @@ npx prisma migrate reset
 - `POST /api/teams` - Create team
 - `GET /api/teams/:teamId` - Get team details
 - `PUT /api/teams/:teamId` - Update team
-- `DELETE /api/teams/:teamId` - Delete team
-- `POST /api/teams/:teamId/members` - Invite member
-- `DELETE /api/teams/:teamId/members/:memberId` - Remove member
+- `DELETE /api/teams/:teamId` - Delete team (owner only)
+- `POST /api/teams/join` - Join team with invite code
+- `DELETE /api/teams/:teamId/members/:userId` - Remove member
+- `PUT /api/teams/:teamId/members/:userId/role` - Update member role
 
 ### Game Endpoints
-- `GET /api/games` - List games
+- `GET /api/games` - List team games
 - `POST /api/games` - Create game
 - `GET /api/games/:gameIdOrSlug` - Get game by ID or slug
-- `PUT /api/games/:gameId` - Update game
+- `PUT /api/games/:gameId` - Update game details
 - `DELETE /api/games/:gameId` - Delete game
-- `GET /api/public/games/:shareCode` - Get public game (no auth required)
+- `GET /api/public/games/:shareCode` - Get public game (no auth)
+- `PUT /api/games/:gameId/status` - Update game status
+
+### Offensive Player Management
+- `POST /api/games/:gameId/offensive-players` - Add offensive player
+- `PUT /api/games/:gameId/offensive-players/:playerId` - Update player
+- `DELETE /api/games/:gameId/offensive-players/:playerId` - Remove player
+- `PUT /api/games/:gameId/offensive-players/reorder` - Reorder players
+- `POST /api/games/:gameId/offensive-players/:playerId/available-defenders` - Add potential matchup
+- `DELETE /api/games/:gameId/offensive-players/:playerId/available-defenders/:defenderId` - Remove potential matchup
+- `PUT /api/games/:gameId/offensive-players/:playerId/current-point-defender` - Set current defender
 
 ### Defender Endpoints
 - `GET /api/defenders/team/:teamId` - List team defenders
 - `POST /api/defenders` - Create defender
 - `POST /api/defenders/bulk` - Bulk create defenders
 - `PUT /api/defenders/:defenderId` - Update defender
-- `DELETE /api/defenders/:defenderId` - Delete defender
+- `DELETE /api/defenders/:defenderId` - Delete defender (admin/owner only)
 - `GET /api/defenders/:defenderId/stats` - Get defender statistics
 
 ### Point Endpoints
 - `GET /api/points/game/:gameId` - List game points
 - `POST /api/points` - Create point
-- `PUT /api/points/:pointId` - Update point
+- `PUT /api/points/:pointId` - Update point outcome
 - `DELETE /api/points/:pointId` - Delete point
-- `PUT /api/points/:pointId/matchups/:matchupId` - Update matchup
+- `POST /api/points/:pointId/clear` - Clear current point assignments
 
-## WebSocket Events
+## 🔌 WebSocket Events
 
-### Client -> Server
-- `join-game` - Join a game room
+### Client → Server
+- `join-game` - Join a game room for real-time updates
 - `leave-game` - Leave current game room
-- `point-update` - Update current point
-- `matchup-update` - Update matchup
-- `player-position-update` - Update player position
-- `typing-start` - User started typing
-- `typing-stop` - User stopped typing
-- `cursor-position` - Share cursor position
 
-### Server -> Client
-- `game-state` - Full game state
-- `active-users` - List of active users
-- `user-joined` - User joined the game
-- `user-left` - User left the game
-- `point-updated` - Point was updated
-- `matchup-updated` - Matchup was updated
-- `player-position-updated` - Player position updated
-- `user-typing` - User is typing
-- `user-stopped-typing` - User stopped typing
-- `cursor-moved` - User's cursor moved
+### Server → Client
+- `game-updated` - Game details changed
+- `player-added` - Offensive player added
+- `player-updated` - Offensive player updated
+- `player-removed` - Offensive player removed
+- `players-reordered` - Player order changed
+- `available-defender-added` - Potential matchup added
+- `available-defender-removed` - Potential matchup removed
+- `current-point-defender-updated` - Current defender assigned
+- `current-point-cleared` - All current assignments cleared
+- `point-created` - New point started
+- `point-updated` - Point outcome recorded
+- `point-deleted` - Point removed
+- `user-joined` - User joined game
+- `user-left` - User left game
 
-## Deployment to Railway
+## 🚢 Deployment to Railway
 
-### 1. Install Railway CLI
-```bash
-npm install -g @railway/cli
+### 1. Prerequisites
+- Railway account
+- GitHub repository connected
+
+### 2. Environment Variables (Railway Dashboard)
+```env
+# Database (auto-provided by Railway PostgreSQL)
+DATABASE_URL=postgresql://...
+
+# Redis (auto-provided by Railway Redis)
+REDIS_URL=redis://...
+
+# Application
+JWT_SECRET=your-secure-secret-key
+NODE_ENV=production
+FRONTEND_URL=https://your-frontend.railway.app
+
+# Frontend variables
+VITE_API_URL=https://your-backend.railway.app/api
+VITE_WS_URL=wss://your-backend.railway.app
 ```
 
-### 2. Login to Railway
-```bash
-railway login
-```
+### 3. Deploy
+Railway will automatically deploy from your GitHub repository on push to main branch.
 
-### 3. Create a new project
-```bash
-railway init
-```
-
-### 4. Add PostgreSQL and Redis
-```bash
-# In Railway dashboard, add:
-# - PostgreSQL database
-# - Redis database
-```
-
-### 5. Configure environment variables
-Set these in Railway dashboard:
-- `DATABASE_URL` - PostgreSQL connection string (auto-generated)
-- `REDIS_URL` - Redis connection string (auto-generated)
-- `JWT_SECRET` - Your secret key for JWT
-- `FRONTEND_URL` - Your frontend URL
-- `NODE_ENV` - Set to "production"
-
-### 6. Deploy
-```bash
-railway up
-```
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 .
 ├── backend/
 │   ├── src/
-│   │   ├── server.ts          # Express server setup
-│   │   ├── routes/            # API routes
-│   │   ├── middleware/        # Express middleware
-│   │   ├── sockets/           # WebSocket handlers
-│   │   └── lib/               # Utilities
+│   │   ├── server.ts          # Express server & Socket.io setup
+│   │   ├── routes/            # API route handlers
+│   │   │   ├── auth.ts        # Authentication routes
+│   │   │   ├── teams.ts       # Team management
+│   │   │   ├── games.ts       # Game & player management
+│   │   │   ├── defenders.ts   # Defender routes
+│   │   │   └── points.ts      # Point tracking
+│   │   ├── middleware/        
+│   │   │   └── auth.ts        # JWT authentication
+│   │   ├── sockets/           
+│   │   │   └── gameSocket.ts  # Real-time game updates
+│   │   └── lib/               
+│   │       └── utils.ts       # Helper functions
 │   ├── prisma/
-│   │   └── schema.prisma      # Database schema
+│   │   ├── schema.prisma      # Database schema
+│   │   └── migrations/        # Database migrations
 │   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── components/        # React components
-│   │   ├── stores/            # Zustand stores
-│   │   ├── lib/               # API client & utilities
-│   │   └── App.tsx
+│   │   ├── pages/             # Route components
+│   │   │   ├── HomePage.tsx   # Dashboard
+│   │   │   ├── GamePage.tsx   # Main game interface
+│   │   │   ├── RosterPage.tsx # Team roster management
+│   │   │   └── StatisticsPage.tsx # Player stats
+│   │   ├── components/        # Reusable components
+│   │   ├── stores/            # Zustand state stores
+│   │   │   ├── authStore.ts   # Authentication state
+│   │   │   └── gameStore.ts   # Game state
+│   │   ├── lib/               
+│   │   │   ├── api.ts         # API client
+│   │   │   └── socket.ts      # WebSocket manager
+│   │   └── App.tsx            # Root component
 │   └── package.json
-├── docker-compose.yml         # Docker Compose configuration
-└── railway.json              # Railway deployment config
+├── docker-compose.yml         # Docker configuration
+├── railway.json              # Railway deployment config
+└── README.md                 # This file
 ```
 
-## Environment Variables
+## 🔧 Environment Variables
 
 ### Backend (.env)
 ```env
+# Database
 DATABASE_URL="postgresql://user:password@localhost:5432/ultimate_dline"
+
+# Redis
 REDIS_URL="redis://localhost:6379"
-JWT_SECRET="your-secret-key"
+
+# Authentication
+JWT_SECRET="your-secret-key-change-in-production"
+JWT_REFRESH_SECRET="your-refresh-secret-key"
+
+# Server
 NODE_ENV="development"
 PORT=5000
+
+# Frontend
 FRONTEND_URL="http://localhost:3000"
 ```
 
 ### Frontend (.env)
 ```env
+# API Configuration
 VITE_API_URL="http://localhost:5000/api"
 VITE_WS_URL="ws://localhost:5000"
 ```
 
-## Testing
+## 🧪 Testing
 
-### Run backend tests
 ```bash
+# Run backend tests
 cd backend
 npm test
-```
 
-### Run frontend tests
-```bash
+# Run frontend tests
 cd frontend
 npm test
+
+# Run e2e tests (if configured)
+npm run test:e2e
 ```
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-### Database connection issues
-- Ensure PostgreSQL is running
-- Check DATABASE_URL in .env
-- Try: `docker-compose down -v` and restart
+### Database Connection Issues
+```bash
+# Check PostgreSQL is running
+docker ps
 
-### WebSocket connection issues
-- Check that backend is running
-- Verify CORS settings
-- Check browser console for errors
+# Verify DATABASE_URL
+echo $DATABASE_URL
 
-### Build issues
-- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
-- Clear Docker cache: `docker-compose build --no-cache`
+# Reset database
+cd backend
+npx prisma migrate reset
+```
 
-## Contributing
+### WebSocket Connection Issues
+- Ensure backend is running on correct port
+- Check CORS settings in backend
+- Verify VITE_WS_URL in frontend .env
+- Check browser console for connection errors
+
+### Build Issues
+```bash
+# Clear all caches and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear Docker cache
+docker-compose down -v
+docker-compose build --no-cache
+```
+
+### Common Errors
+- **"Cannot find module"**: Run `npm install` in the affected directory
+- **"Prisma client not generated"**: Run `npx prisma generate` in backend
+- **"Port already in use"**: Kill the process using the port or change PORT in .env
+- **"Invalid token"**: Clear localStorage and login again
+
+## 👥 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+### Development Guidelines
+- Follow existing code style and conventions
+- Add tests for new features
+- Update documentation as needed
+- Keep commits focused and descriptive
+- Ensure all tests pass before submitting PR
 
-MIT
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
+
+- Built for the Ultimate Frisbee community
+- Inspired by the need for better defensive line management tools
+- Special thanks to all contributors and testers
+
+## 📞 Support
+
+For issues, feature requests, or questions:
+- Open an issue on [GitHub](https://github.com/mattshapsss/Toshi-Frisbee-App/issues)
+- Contact the development team
+
+---
+
+**Made with ❤️ for Ultimate Frisbee teams everywhere**
