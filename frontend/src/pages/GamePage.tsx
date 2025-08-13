@@ -487,15 +487,18 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
             if (targetPlayerId && targetPlayerId !== touchInfo.player.id) {
               const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
               if (targetPlayer) {
-                // Swap players
+                // Swap players - store original bench states first
+                const draggedPlayerOriginalBench = touchInfo.player.isBench;
+                const targetPlayerOriginalBench = targetPlayer.isBench;
+                
                 try {
                   await updateOffensivePlayerMutation.mutateAsync({
                     playerId: touchInfo.player.id,
-                    data: { isBench: targetPlayer.isBench }
+                    data: { isBench: targetPlayerOriginalBench }
                   });
                   await updateOffensivePlayerMutation.mutateAsync({
                     playerId: targetPlayer.id,
-                    data: { isBench: touchInfo.player.isBench }
+                    data: { isBench: draggedPlayerOriginalBench }
                   });
                 } catch (error) {
                   console.error('Error swapping players:', error);
