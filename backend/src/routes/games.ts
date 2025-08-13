@@ -156,6 +156,18 @@ router.get('/:gameIdOrSlug', async (req: AuthRequest, res, next) => {
         },
         offensivePlayers: {
           orderBy: [{ isBench: 'asc' }, { order: 'asc' }],
+          include: {
+            availableDefenders: {
+              include: {
+                defender: true,
+              },
+            },
+            currentPointDefender: {
+              include: {
+                defender: true,
+              },
+            },
+          },
         },
         points: {
           include: {
@@ -426,6 +438,130 @@ router.put('/:gameId/offensive-players/reorder', async (req: AuthRequest, res, n
     });
     
     res.json(players);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Add available defender to offensive player
+router.post('/:gameId/offensive-players/:playerId/available-defenders', async (req: AuthRequest, res, next) => {
+  try {
+    const schema = z.object({
+      defenderId: z.string(),
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Check access
+    const hasAccess = await validateGameAccess(req.params.gameId, req.user!.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const availableDefender = await prisma.availableDefender.create({
+      data: {
+        offensivePlayerId: req.params.playerId,
+        defenderId: data.defenderId,
+      },
+      include: {
+        defender: true,
+      },
+    });
+    
+    res.status(201).json(availableDefender);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Remove available defender from offensive player
+router.delete('/:gameId/offensive-players/:playerId/available-defenders/:defenderId', async (req: AuthRequest, res, next) => {
+  try {
+    // Check access
+    const hasAccess = await validateGameAccess(req.params.gameId, req.user!.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await prisma.availableDefender.delete({
+      where: {
+        offensivePlayerId_defenderId: {
+          offensivePlayerId: req.params.playerId,
+          defenderId: req.params.defenderId,
+        },
+      },
+    });
+    
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Set current point defender for offensive player
+router.put('/:gameId/offensive-players/:playerId/current-point-defender', async (req: AuthRequest, res, next) => {
+  try {
+    const schema = z.object({
+      defenderId: z.string().nullable(),
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Check access
+    const hasAccess = await validateGameAccess(req.params.gameId, req.user!.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Delete existing current point defender
+    await prisma.currentPointDefender.deleteMany({
+      where: { offensivePlayerId: req.params.playerId },
+    });
+    
+    // Create new current point defender if defenderId provided
+    if (data.defenderId) {
+      const currentPointDefender = await prisma.currentPointDefender.create({
+        data: {
+          offensivePlayerId: req.params.playerId,
+          defenderId: data.defenderId,
+        },
+        include: {
+          defender: true,
+        },
+      });
+      
+      res.json(currentPointDefender);
+    } else {
+      res.status(204).send();
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Clear all current point defenders for a game
+router.delete('/:gameId/current-point-defenders', async (req: AuthRequest, res, next) => {
+  try {
+    // Check access
+    const hasAccess = await validateGameAccess(req.params.gameId, req.user!.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Get all offensive players for this game
+    const players = await prisma.offensivePlayer.findMany({
+      where: { gameId: req.params.gameId },
+      select: { id: true },
+    });
+    
+    const playerIds = players.map(p => p.id);
+    
+    // Delete all current point defenders for these players
+    await prisma.currentPointDefender.deleteMany({
+      where: { offensivePlayerId: { in: playerIds } },
+    });
+    
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

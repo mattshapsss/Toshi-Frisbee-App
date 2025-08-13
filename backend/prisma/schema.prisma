@@ -77,6 +77,8 @@ model Defender {
   team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   matchups       Matchup[]
   statistics     DefenderStats[]
+  availableFor   AvailableDefender[]
+  currentPointFor CurrentPointDefender[]
   
   @@index([teamId])
   @@index([name])
@@ -130,6 +132,8 @@ model OffensivePlayer {
   
   game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
   matchups       Matchup[]
+  availableDefenders AvailableDefender[]
+  currentPointDefender CurrentPointDefender?
   
   @@index([gameId])
 }
@@ -254,4 +258,30 @@ enum ActivityType {
   MATCHUP_CHANGED
   USER_JOINED
   USER_LEFT
+}
+
+model AvailableDefender {
+  id                String          @id @default(cuid())
+  offensivePlayerId String
+  defenderId        String
+  createdAt         DateTime        @default(now())
+  
+  offensivePlayer   OffensivePlayer @relation(fields: [offensivePlayerId], references: [id], onDelete: Cascade)
+  defender          Defender        @relation(fields: [defenderId], references: [id], onDelete: Cascade)
+  
+  @@unique([offensivePlayerId, defenderId])
+  @@index([offensivePlayerId])
+  @@index([defenderId])
+}
+
+model CurrentPointDefender {
+  id                String          @id @default(cuid())
+  offensivePlayerId String          @unique
+  defenderId        String
+  createdAt         DateTime        @default(now())
+  
+  offensivePlayer   OffensivePlayer @relation(fields: [offensivePlayerId], references: [id], onDelete: Cascade)
+  defender          Defender        @relation(fields: [defenderId], references: [id], onDelete: Cascade)
+  
+  @@index([defenderId])
 }

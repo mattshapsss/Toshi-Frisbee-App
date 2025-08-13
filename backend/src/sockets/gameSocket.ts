@@ -263,6 +263,70 @@ export const setupSocketHandlers = (io: Server) => {
       }
     });
     
+    // Available defender updates
+    socket.on('available-defender-add', async (data) => {
+      const { gameId, playerId, defenderId } = data;
+      
+      if (socket.gameId !== gameId) {
+        socket.emit('error', { message: 'Not in this game room' });
+        return;
+      }
+      
+      io.to(`game:${gameId}`).emit('available-defender-added', {
+        playerId,
+        defenderId,
+        userId: socket.userId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    
+    socket.on('available-defender-remove', async (data) => {
+      const { gameId, playerId, defenderId } = data;
+      
+      if (socket.gameId !== gameId) {
+        socket.emit('error', { message: 'Not in this game room' });
+        return;
+      }
+      
+      io.to(`game:${gameId}`).emit('available-defender-removed', {
+        playerId,
+        defenderId,
+        userId: socket.userId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    
+    // Current point defender updates
+    socket.on('current-point-defender-set', async (data) => {
+      const { gameId, playerId, defenderId } = data;
+      
+      if (socket.gameId !== gameId) {
+        socket.emit('error', { message: 'Not in this game room' });
+        return;
+      }
+      
+      io.to(`game:${gameId}`).emit('current-point-defender-updated', {
+        playerId,
+        defenderId,
+        userId: socket.userId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    
+    socket.on('current-point-clear', async (data) => {
+      const { gameId } = data;
+      
+      if (socket.gameId !== gameId) {
+        socket.emit('error', { message: 'Not in this game room' });
+        return;
+      }
+      
+      io.to(`game:${gameId}`).emit('current-point-cleared', {
+        userId: socket.userId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    
     // Handle disconnection
     socket.on('disconnect', async () => {
       console.log(`User ${socket.userId} disconnected`);

@@ -163,12 +163,40 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         queryClient.invalidateQueries({ queryKey: ['game'] });
       };
 
+      const handleAvailableDefenderAdded = (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ['game'] });
+      };
+
+      const handleAvailableDefenderRemoved = (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ['game'] });
+      };
+
+      const handleCurrentPointDefenderUpdated = (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ['game'] });
+        setUnsavedChanges(true);
+      };
+
+      const handleCurrentPointCleared = (data: any) => {
+        queryClient.invalidateQueries({ queryKey: ['game'] });
+        setUnsavedChanges(false);
+        setPointStartTime(null);
+        setElapsedTime(0);
+      };
+
       socketManager.on('point-updated', handlePointUpdate);
       socketManager.on('matchup-updated', handleMatchupUpdate);
+      socketManager.on('available-defender-added', handleAvailableDefenderAdded);
+      socketManager.on('available-defender-removed', handleAvailableDefenderRemoved);
+      socketManager.on('current-point-defender-updated', handleCurrentPointDefenderUpdated);
+      socketManager.on('current-point-cleared', handleCurrentPointCleared);
 
       return () => {
         socketManager.off('point-updated', handlePointUpdate);
         socketManager.off('matchup-updated', handleMatchupUpdate);
+        socketManager.off('available-defender-added', handleAvailableDefenderAdded);
+        socketManager.off('available-defender-removed', handleAvailableDefenderRemoved);
+        socketManager.off('current-point-defender-updated', handleCurrentPointDefenderUpdated);
+        socketManager.off('current-point-cleared', handleCurrentPointCleared);
         socketManager.leaveGame();
       };
     }
@@ -204,21 +232,29 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   };
 
   const clearCurrentPoint = () => {
-    setCurrentPoint([]);
+    clearAllCurrentPointDefenders();
   };
 
   const savePoint = (gotBreak: boolean) => {
-    if (!game || currentPoint.length === 0) return;
+    if (!game) return;
+
+    // Collect matchups from current point defenders
+    const matchups = game.offensivePlayers
+      ?.filter((p: any) => !p.isBench && p.currentPointDefender)
+      .map((p: any) => ({
+        offensivePlayerId: p.id,
+        defenderId: p.currentPointDefender.defenderId
+      })) || [];
+
+    if (matchups.length === 0) {
+      alert('Please assign defenders to at least one offensive player');
+      return;
+    }
 
     // Update game status to IN_PROGRESS if it's still in SETUP
     if (game.status === 'SETUP') {
       gamesApi.update(game.id, { status: 'IN_PROGRESS' });
     }
-
-    const matchups = currentPoint.map(cp => ({
-      offensivePlayerId: cp.offensivePlayerId,
-      defenderId: cp.defenderId
-    }));
 
     createPointMutation.mutate({
       gameId: game.id,
@@ -284,6 +320,131 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handleDefenderDragEnd = () => {
     setDraggedDefender(null);
     setDragOverPlayer(null);
+  };
+
+  // Handler functions for Available Defenders and Current Point
+  const handleAddAvailableDefender = async (playerId: string, defenderId: string) => {
+    if (!game) return;
+    
+    try {
+      await gamesApi.addAvailableDefender(game.id, playerId, defenderId);
+      queryClient.invalidateQueries({ queryKey: ['game'] });
+      
+      // Emit WebSocket event
+      if (socketManager.isConnected()) {
+        socketManager.emit('available-defender-add', {
+          gameId: game.id,
+          playerId,
+          defenderId
+        });
+      }
+    } catch (error) {
+      console.error('Error adding available defender:', error);
+    }
+  };
+
+  const handleRemoveAvailableDefender = async (playerId: string, defenderId: string) => {
+    if (!game) return;
+    
+    try {
+      await gamesApi.removeAvailableDefender(game.id, playerId, defenderId);
+      queryClient.invalidateQueries({ queryKey: ['game'] });
+      
+      // Also remove from current point if selected
+      const player = game.offensivePlayers?.find((p: any) => p.id === playerId);
+      if (player?.currentPointDefender?.defenderId === defenderId) {
+        await handleRemoveCurrentPointDefender(playerId);
+      }
+      
+      // Emit WebSocket event
+      if (socketManager.isConnected()) {
+        socketManager.emit('available-defender-remove', {
+          gameId: game.id,
+          playerId,
+          defenderId
+        });
+      }
+    } catch (error) {
+      console.error('Error removing available defender:', error);
+    }
+  };
+
+  const handleSetCurrentPointDefender = async (playerId: string, defenderId: string) => {
+    if (!game) return;
+    
+    try {
+      // First check if this defender is already assigned to another player
+      const otherPlayer = game.offensivePlayers?.find((p: any) => 
+        p.id !== playerId && p.currentPointDefender?.defenderId === defenderId
+      );
+      
+      if (otherPlayer) {
+        // Remove from other player first
+        await gamesApi.setCurrentPointDefender(game.id, otherPlayer.id, null);
+      }
+      
+      await gamesApi.setCurrentPointDefender(game.id, playerId, defenderId);
+      queryClient.invalidateQueries({ queryKey: ['game'] });
+      setUnsavedChanges(true);
+      
+      // Start point timer if not started
+      if (!pointStartTime) {
+        setPointStartTime(new Date());
+      }
+      
+      // Emit WebSocket event
+      if (socketManager.isConnected()) {
+        socketManager.emit('current-point-defender-set', {
+          gameId: game.id,
+          playerId,
+          defenderId
+        });
+      }
+    } catch (error) {
+      console.error('Error setting current point defender:', error);
+    }
+  };
+
+  const handleRemoveCurrentPointDefender = async (playerId: string) => {
+    if (!game) return;
+    
+    try {
+      await gamesApi.setCurrentPointDefender(game.id, playerId, null);
+      queryClient.invalidateQueries({ queryKey: ['game'] });
+      setUnsavedChanges(true);
+      
+      // Emit WebSocket event
+      if (socketManager.isConnected()) {
+        socketManager.emit('current-point-defender-set', {
+          gameId: game.id,
+          playerId,
+          defenderId: null
+        });
+      }
+    } catch (error) {
+      console.error('Error removing current point defender:', error);
+    }
+  };
+
+  const clearAllCurrentPointDefenders = async () => {
+    if (!game) return;
+    
+    try {
+      await gamesApi.clearCurrentPointDefenders(game.id);
+      queryClient.invalidateQueries({ queryKey: ['game'] });
+      setUnsavedChanges(false);
+      setPointStartTime(null);
+      setElapsedTime(0);
+      
+      // Emit WebSocket event
+      if (socketManager.isConnected()) {
+        socketManager.emit('current-point-clear', {
+          gameId: game.id
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing current point defenders:', error);
+    }
   };
 
   const exportGameData = async (format: 'json' | 'csv') => {
@@ -484,7 +645,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
               <div className="flex space-x-2">
                 <button
                   onClick={() => savePoint(true)}
-                  disabled={currentPoint.length === 0}
+                  disabled={!game?.offensivePlayers?.some((p: any) => !p.isBench && p.currentPointDefender)}
                   className={`flex-1 px-4 py-2 text-white rounded-md font-medium text-sm transition-all disabled:opacity-50 ${
                     lastButtonClicked === 'break' 
                       ? 'bg-emerald-800 scale-95' 
@@ -495,7 +656,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 </button>
                 <button
                   onClick={() => savePoint(false)}
-                  disabled={currentPoint.length === 0}
+                  disabled={!game?.offensivePlayers?.some((p: any) => !p.isBench && p.currentPointDefender)}
                   className={`flex-1 px-4 py-2 text-white rounded-md font-medium text-sm transition-all disabled:opacity-50 ${
                     lastButtonClicked === 'nobreak' 
                       ? 'bg-rose-800 scale-95' 
@@ -509,46 +670,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           </div>
         )}
 
-        {/* Draggable Defenders Roster */}
-        {!isPublic && defenders.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b">
-              <h3 className="font-medium text-gray-800 flex items-center">
-                <Users className="h-4 w-4 mr-2" />
-                Available Defenders (Drag to assign)
-              </h3>
-            </div>
-            <div className="p-4 flex flex-wrap gap-2">
-              {defenders.map((defender: any) => {
-                const isAssigned = currentPoint.some(cp => cp.defenderId === defender.id);
-                return (
-                  <div
-                    key={defender.id}
-                    draggable={!isAssigned}
-                    onDragStart={(e) => handleDefenderDragStart(e, defender)}
-                    onDragEnd={handleDefenderDragEnd}
-                    className={`px-3 py-2 rounded-lg cursor-move transition-all ${
-                      isAssigned 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50' 
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-md'
-                    } ${
-                      draggedDefender?.id === defender.id ? 'opacity-50 scale-95' : ''
-                    }`}
-                    style={{
-                      backgroundColor: isAssigned ? undefined : '#E8F3FF',
-                      color: isAssigned ? undefined : '#3E8EDE'
-                    }}
-                  >
-                    <span className="font-medium">{defender.name}</span>
-                    {defender.jerseyNumber && (
-                      <span className="ml-2 text-xs opacity-75">#{defender.jerseyNumber}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Matchups Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -562,7 +683,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 <tr>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offensive Player</th>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
-                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Defender</th>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Available Defenders</th>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Point</th>
                   {!isPublic && (
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Delete</th>
                   )}
@@ -574,12 +696,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                   return (
                     <tr 
                       key={player.id} 
-                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${
-                        dragOverPlayer === player.id ? 'bg-blue-50 ring-2 ring-blue-400' : ''
-                      } transition-all`}
-                      onDragOver={(e) => handlePlayerDragOver(e, player.id)}
-                      onDragLeave={handlePlayerDragLeave}
-                      onDrop={(e) => handlePlayerDrop(e, player.id)}
+                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} transition-all`}
                     >
                       <td className="px-2 sm:px-4 py-3">
                         <span className="font-medium text-gray-900">{player.name}</span>
@@ -606,39 +723,100 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                           </span>
                         )}
                       </td>
+                      {/* Available Defenders Column */}
                       <td className="px-2 sm:px-4 py-3">
-                        {!isPublic ? (
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={currentDefender?.defenderId || ''}
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  addDefenderToCurrentPoint(player.id, e.target.value);
-                                } else {
-                                  removeDefenderFromCurrentPoint(player.id);
-                                }
-                              }}
-                              className="text-sm px-2 py-1 border rounded"
-                            >
-                              <option value="">Select defender...</option>
-                              {defenders.map((defender: any) => (
-                                <option key={defender.id} value={defender.id}>
-                                  {defender.name}
-                                </option>
-                              ))}
-                            </select>
-                            {currentDefender && (
-                              <button
-                                onClick={() => removeDefenderFromCurrentPoint(player.id)}
-                                className="text-red-500 hover:text-red-700"
+                        <div className="min-h-10 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {player.availableDefenders?.map((ad: any) => {
+                              const isInCurrentPoint = player.currentPointDefender?.defenderId === ad.defender.id;
+                              return (
+                                <div 
+                                  key={ad.id}
+                                  className={`px-2 py-1 rounded-md text-xs flex items-center space-x-1 ${
+                                    isInCurrentPoint ? 'opacity-50' : ''
+                                  } text-white`}
+                                  style={{ backgroundColor: '#3E8EDE' }}
+                                >
+                                  <span>{ad.defender.name}</span>
+                                  {!isPublic && (
+                                    <button
+                                      onClick={() => handleRemoveAvailableDefender(player.id, ad.defender.id)}
+                                      className="text-white opacity-75 hover:opacity-100"
+                                    >
+                                      ×
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {!isPublic && (
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAddAvailableDefender(player.id, e.target.value);
+                                    e.target.value = '';
+                                  }
+                                }}
+                                className="text-xs px-1 py-1 border rounded min-w-12"
+                                defaultValue=""
                               >
-                                ×
-                              </button>
+                                <option value="">+ Add</option>
+                                {defenders.filter((d: any) => 
+                                  !player.availableDefenders?.some((ad: any) => ad.defender.id === d.id)
+                                ).map((defender: any) => (
+                                  <option key={defender.id} value={defender.id}>{defender.name}</option>
+                                ))}
+                              </select>
+                            )}
+                            {(!player.availableDefenders || player.availableDefenders.length === 0) && !isPublic && (
+                              <span className="text-gray-400 text-xs">Add defenders</span>
                             )}
                           </div>
-                        ) : (
-                          <span className="text-gray-500">-</span>
-                        )}
+                        </div>
+                      </td>
+                      {/* Current Point Column */}
+                      <td className="px-2 sm:px-4 py-3">
+                        <div className="min-h-10 p-2 border-2 border-dashed border-emerald-300 rounded-lg bg-emerald-50">
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {player.currentPointDefender && (
+                              <div 
+                                className="bg-emerald-600 text-white px-2 py-1 rounded-md text-xs flex items-center justify-between"
+                              >
+                                <span>{player.currentPointDefender.defender.name}</span>
+                                {!isPublic && (
+                                  <button
+                                    onClick={() => handleRemoveCurrentPointDefender(player.id)}
+                                    className="text-emerald-200 hover:text-white ml-1"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {!isPublic && !player.currentPointDefender && (
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleSetCurrentPointDefender(player.id, e.target.value);
+                                    e.target.value = '';
+                                  }
+                                }}
+                                className="text-xs px-1 py-1 border rounded min-w-12"
+                                defaultValue=""
+                              >
+                                <option value="">+ Select</option>
+                                {player.availableDefenders?.map((ad: any) => (
+                                  <option key={ad.defender.id} value={ad.defender.id}>
+                                    {ad.defender.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            {!player.currentPointDefender && !isPublic && (
+                              <span className="text-gray-400 text-xs">Select defender</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       {!isPublic && (
                         <td className="px-2 sm:px-4 py-3">
@@ -657,7 +835,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 {/* Bench separator */}
                 {game.offensivePlayers?.some((p: any) => p.isBench) && (
                   <tr>
-                    <td colSpan={isPublic ? 3 : 4} className="px-4 py-2 text-center bg-gray-100">
+                    <td colSpan={isPublic ? 4 : 5} className="px-4 py-2 text-center bg-gray-100">
                       <span className="text-sm font-semibold text-gray-600 uppercase">— Bench —</span>
                     </td>
                   </tr>
@@ -676,6 +854,9 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     </td>
                     <td className="px-2 sm:px-4 py-3">
                       <span className="text-gray-400">Bench</span>
+                    </td>
+                    <td className="px-2 sm:px-4 py-3">
+                      <span className="text-gray-400">-</span>
                     </td>
                     {!isPublic && (
                       <td className="px-2 sm:px-4 py-3">

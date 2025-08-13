@@ -195,6 +195,26 @@ export const gamesApi = {
     const response = await api.put(`/games/${gameId}/offensive-players/reorder`, { playerIds });
     return response.data;
   },
+
+  // Available Defenders
+  addAvailableDefender: async (gameId: string, playerId: string, defenderId: string) => {
+    const response = await api.post(`/games/${gameId}/offensive-players/${playerId}/available-defenders`, { defenderId });
+    return response.data;
+  },
+
+  removeAvailableDefender: async (gameId: string, playerId: string, defenderId: string) => {
+    await api.delete(`/games/${gameId}/offensive-players/${playerId}/available-defenders/${defenderId}`);
+  },
+
+  // Current Point Defenders
+  setCurrentPointDefender: async (gameId: string, playerId: string, defenderId: string | null) => {
+    const response = await api.put(`/games/${gameId}/offensive-players/${playerId}/current-point-defender`, { defenderId });
+    return response.data;
+  },
+
+  clearCurrentPointDefenders: async (gameId: string) => {
+    await api.delete(`/games/${gameId}/current-point-defenders`);
+  },
 };
 
 // Defenders API
