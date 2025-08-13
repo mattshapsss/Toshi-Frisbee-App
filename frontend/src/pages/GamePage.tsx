@@ -588,14 +588,21 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         
         const element = document.elementFromPoint(moveTouch.clientX, moveTouch.clientY);
         const playerRow = element?.closest('tr[data-player-id]');
+        const benchSeparator = element?.closest('tr[data-bench-separator]');
         
-        if (playerRow) {
+        // Check for bench separator first
+        if (benchSeparator) {
+          setDragOverBench(true);
+          setDragOverPlayer(null);
+        } else if (playerRow) {
           const playerId = playerRow.getAttribute('data-player-id');
           if (playerId && playerId !== touchInfo.player.id) {
             setDragOverPlayer(playerId);
+            setDragOverBench(false);
           }
         } else {
           setDragOverPlayer(null);
+          setDragOverBench(false);
         }
       }
     };
@@ -642,32 +649,39 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
             }
           }
           
-          // Handle drop on bench separator (for empty bench or moving to bench)
+          // Handle drop on bench separator
           if (benchSeparator && touchInfo.player) {
             const draggedPlayer = game.offensivePlayers?.find((p: any) => p.id === touchInfo.player.id);
-            if (draggedPlayer && !draggedPlayer.isBench) {
-              // Move to bench
+            if (draggedPlayer) {
               const players = game.offensivePlayers || [];
               const newPlayers = [...players];
               const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
               
               if (draggedIndex !== -1) {
                 const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+                
+                // Check if we need to change bench status
+                const wasOnBench = draggedItem.isBench;
                 draggedItem.isBench = true;
                 
-                // Find first bench position or end of array
-                const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
-                if (firstBenchIndex !== -1) {
-                  newPlayers.splice(firstBenchIndex, 0, draggedItem);
-                } else {
+                // Find where to insert in bench
+                const benchPlayers = newPlayers.filter((p: any) => p.isBench);
+                if (benchPlayers.length === 0) {
+                  // Empty bench - add at end
                   newPlayers.push(draggedItem);
+                } else {
+                  // Add at beginning of bench
+                  const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
+                  newPlayers.splice(firstBenchIndex, 0, draggedItem);
                 }
                 
-                // Update in backend
-                await updateOffensivePlayerMutation.mutateAsync({
-                  playerId: draggedItem.id,
-                  data: { isBench: true }
-                });
+                // Update bench status if changed
+                if (!wasOnBench) {
+                  await updateOffensivePlayerMutation.mutateAsync({
+                    playerId: draggedItem.id,
+                    data: { isBench: true }
+                  });
+                }
                 
                 await reorderOffensivePlayersMutation.mutateAsync({
                   gameId: game.id,
@@ -707,21 +721,32 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     });
                   }
                   
-                  // Calculate new index after removal
-                  let insertIndex = targetIndex;
-                  if (draggedIndex < targetIndex) {
-                    // Item was removed before target, so target index shifted down
-                    insertIndex = targetIndex - 1;
-                  }
+                  // Calculate insertion index based on the scenario
+                  let insertIndex;
                   
-                  // Special handling for last positions
+                  // Special case: dropping from bench to last active position
                   if (isLastActive && draggedPlayer.isBench && !targetPlayer.isBench) {
-                    // Dropping from bench to last active - insert right above bench
-                    const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
-                    insertIndex = firstBenchIndex !== -1 ? firstBenchIndex : newPlayers.length;
-                  } else if (isLastBench && !draggedPlayer.isBench && targetPlayer.isBench) {
-                    // Dropping from active to last bench - insert at end
+                    // We want to place it at the end of active section (right above bench)
+                    // Find where bench section starts in the array after removal
+                    const firstBenchIdx = newPlayers.findIndex((p: any) => p.isBench);
+                    insertIndex = firstBenchIdx !== -1 ? firstBenchIdx : newPlayers.length;
+                  } 
+                  // Special case: dropping to last bench position
+                  else if (isLastBench && !draggedPlayer.isBench && targetPlayer.isBench) {
+                    // Place at the very end
                     insertIndex = newPlayers.length;
+                  }
+                  // Normal reordering within same section
+                  else {
+                    // Find target's new position after removal
+                    const newTargetIdx = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+                    if (newTargetIdx !== -1) {
+                      // Insert before or after based on original positions
+                      insertIndex = draggedIndex < targetIndex ? newTargetIdx : newTargetIdx + 1;
+                    } else {
+                      // Fallback
+                      insertIndex = Math.min(targetIndex, newPlayers.length);
+                    }
                   }
                   
                   // Insert at new position
@@ -743,10 +768,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         }
       }
       
-      // Reset state
+      // Reset all drag states
       setIsDragging(false);
       setDraggedPlayer(null);
       setDragOverPlayer(null);
+      setDragOverBench(false);
       setDragPosition(null);
       setDraggedRowHTML('');
       setTouchTimeout(null);
@@ -1423,8 +1449,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     stopAutoScroll();
                   }}
                 >
-                  <td colSpan={isPublic ? 4 : 5} className="px-4 py-2 text-center bg-gray-100">
-                    <span className="text-sm font-semibold text-gray-600 uppercase">— Bench —</span>
+                  <td colSpan={isPublic ? 4 : 5} className={`px-4 text-center bg-gray-100 ${
+                    game.offensivePlayers?.filter((p: any) => p.isBench).length === 0 ? 'py-8' : 'py-2'
+                  }`}>
+                    <span className="text-sm font-semibold text-gray-600 uppercase">
+                      {game.offensivePlayers?.filter((p: any) => p.isBench).length === 0 && dragOverBench && !draggedPlayer?.isBench
+                        ? '↓ Drop Here to Add to Bench ↓' 
+                        : '— Bench —'}
+                    </span>
                   </td>
                 </tr>
                 
