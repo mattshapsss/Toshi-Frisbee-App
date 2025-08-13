@@ -159,7 +159,7 @@ export default function RosterPage() {
                 value={newDefenderNumber}
                 onChange={(e) => setNewDefenderNumber(e.target.value)}
                 placeholder="Jersey # (optional)"
-                className="w-40 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-48 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddDefender()}
               />
               <button
@@ -203,7 +203,7 @@ export default function RosterPage() {
                     <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total Points</th>
                     <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Breaks</th>
                     <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Break %</th>
-                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Delete</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
