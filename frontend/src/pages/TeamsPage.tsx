@@ -286,7 +286,7 @@ export default function TeamsPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-1 flex-shrink-0 -mr-1">
                     <button
                       onClick={() => navigate(`/teams/${team.id}/roster`)}
                       className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
