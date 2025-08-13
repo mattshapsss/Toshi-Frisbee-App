@@ -503,8 +503,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       // Find target's new position after removal
       const newTargetIdx = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
       if (newTargetIdx !== -1) {
-        // Insert based on original relative positions
-        insertIndex = draggedIndex < targetIndex ? newTargetIdx : newTargetIdx + 1;
+        // If dragging within the same section, we need to consider the direction
+        if (draggedIndex < targetIndex) {
+          // Dragging from above to below - insert after target
+          insertIndex = newTargetIdx + 1;
+        } else {
+          // Dragging from below to above - insert before target
+          insertIndex = newTargetIdx;
+        }
       } else {
         // Fallback
         insertIndex = Math.min(targetIndex, newPlayers.length);
@@ -756,8 +762,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     // Find target's new position after removal
                     const newTargetIdx = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
                     if (newTargetIdx !== -1) {
-                      // Insert before or after based on original positions
-                      insertIndex = draggedIndex < targetIndex ? newTargetIdx : newTargetIdx + 1;
+                      // If dragging within the same section, we need to consider the direction
+                      if (draggedIndex < targetIndex) {
+                        // Dragging from above to below - insert after target
+                        insertIndex = newTargetIdx + 1;
+                      } else {
+                        // Dragging from below to above - insert before target
+                        insertIndex = newTargetIdx;
+                      }
                     } else {
                       // Fallback
                       insertIndex = Math.min(targetIndex, newPlayers.length);
