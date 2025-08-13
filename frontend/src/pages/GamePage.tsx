@@ -440,50 +440,47 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
     
     const players = game.offensivePlayers || [];
-    const draggedIndex = players.findIndex((p: any) => p.id === draggedPlayer.id);
-    const targetIndex = players.findIndex((p: any) => p.id === targetPlayer.id);
     
-    if (draggedIndex !== -1 && targetIndex !== -1) {
-      const newPlayers = [...players];
-      
-      // Remove dragged player from its position
-      const [draggedItem] = newPlayers.splice(draggedIndex, 1);
-      
-      // Update bench status if moving between sections
-      if (draggedPlayer.isBench !== targetPlayer.isBench) {
-        draggedItem.isBench = targetPlayer.isBench;
-        // Update bench status in backend
-        await updateOffensivePlayerMutation.mutateAsync({
-          playerId: draggedItem.id,
-          data: { isBench: targetPlayer.isBench }
-        });
-      }
-      
-      // Find the new target index after removal
-      const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
-      
-      // Insert at the target position
-      if (newTargetIndex !== -1) {
-        // Determine if we should insert before or after target
-        // If dragging from higher index to lower, insert before
-        // If dragging from lower index to higher, insert after
-        if (draggedIndex < targetIndex) {
-          // Dragging down - insert after target
-          newPlayers.splice(newTargetIndex + 1, 0, draggedItem);
-        } else {
-          // Dragging up - insert before target
-          newPlayers.splice(newTargetIndex, 0, draggedItem);
-        }
-      } else {
-        newPlayers.push(draggedItem);
-      }
-      
-      // Call the reorder API with all players to maintain order
-      await reorderOffensivePlayersMutation.mutateAsync({
-        gameId: game.id,
-        playerIds: newPlayers.map((p: any) => p.id)
+    // Create new array with proper ordering
+    const newPlayers = [...players];
+    const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
+    const targetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+    
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedPlayer(null);
+      setDragOverPlayer(null);
+      stopAutoScroll();
+      return;
+    }
+    
+    // Remove the dragged item
+    const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+    
+    // Update bench status if moving between sections
+    if (draggedPlayer.isBench !== targetPlayer.isBench) {
+      draggedItem.isBench = targetPlayer.isBench;
+      // Update bench status in backend
+      await updateOffensivePlayerMutation.mutateAsync({
+        playerId: draggedItem.id,
+        data: { isBench: targetPlayer.isBench }
       });
     }
+    
+    // Calculate new index after removal
+    let insertIndex = targetIndex;
+    if (draggedIndex < targetIndex) {
+      // Item was removed before target, so target index shifted down
+      insertIndex = targetIndex - 1;
+    }
+    
+    // Insert at new position (before the target)
+    newPlayers.splice(insertIndex, 0, draggedItem);
+    
+    // Call the reorder API with all players to maintain order
+    await reorderOffensivePlayersMutation.mutateAsync({
+      gameId: game.id,
+      playerIds: newPlayers.map((p: any) => p.id)
+    });
     
     setDraggedPlayer(null);
     setDragOverPlayer(null);
@@ -1085,10 +1082,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       key={player.id}
                       data-player-id={player.id}
                       className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
-                        dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? 'ring-2 ring-blue-400 bg-blue-50' : ''
-                      } ${
                         isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                       }`}
+                      style={{
+                        borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined
+                      }}
                       draggable={!isPublic}
                       onDragStart={(e) => handlePlayerDragStart(e, player)}
                       onDragEnd={handlePlayerDragEnd}
@@ -1344,10 +1342,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     key={player.id}
                     data-player-id={player.id} 
                     className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
-                      dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? 'ring-2 ring-blue-400 bg-blue-50' : ''
-                    } ${
                       isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                     }`}
+                    style={{
+                      borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined
+                    }}
                     draggable={!isPublic}
                     onDragStart={(e) => handlePlayerDragStart(e, player)}
                     onDragEnd={handlePlayerDragEnd}
