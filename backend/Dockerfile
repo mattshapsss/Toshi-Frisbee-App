@@ -1,26 +1,29 @@
-FROM node:20-alpine AS builder
+FROM node:18-alpine
+
+# Install OpenSSL
+RUN apk add --no-cache openssl openssl-dev libc6-compat
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
+COPY prisma ./prisma/
 
+# Install all dependencies
+RUN npm ci
+
+# Generate Prisma client with correct binary
+ENV PRISMA_BINARY_TARGET=linux-musl-openssl-3.0.x
+RUN npx prisma generate
+
+# Copy source code
 COPY . .
-RUN npm install --only=development && \
-    npx prisma generate && \
-    npm run build
 
-FROM node:20-alpine
+# Build TypeScript
+RUN npm run build
 
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/prisma ./prisma
-
+# Expose port
 EXPOSE 5000
 
-CMD ["node", "dist/server.js"]
+# Start server
+CMD ["npm", "run", "start"]
