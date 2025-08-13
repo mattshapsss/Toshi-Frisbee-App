@@ -7,10 +7,12 @@ import { authApi } from '../lib/api';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
 
   const updatePasswordMutation = useMutation({
     mutationFn: authApi.updatePassword,
@@ -22,6 +24,19 @@ export default function ProfilePage() {
     },
     onError: (error: any) => {
       alert(error.response?.data?.error || 'Failed to update password');
+    }
+  });
+
+  const updateUsernameMutation = useMutation({
+    mutationFn: authApi.updateUsername,
+    onSuccess: (data) => {
+      setUser(data.user);
+      setIsEditingUsername(false);
+      setNewUsername('');
+      alert('Username updated successfully!');
+    },
+    onError: (error: any) => {
+      alert(error.response?.data?.error || 'Failed to update username');
     }
   });
 
@@ -69,7 +84,50 @@ export default function ProfilePage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-              <div className="px-4 py-2 bg-gray-50 rounded-lg text-gray-900">{user?.username}</div>
+              {isEditingUsername ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter new username"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newUsername.trim() && newUsername.trim() !== user?.username) {
+                        updateUsernameMutation.mutate({ username: newUsername.trim() });
+                      }
+                    }}
+                    disabled={!newUsername.trim() || updateUsernameMutation.isPending}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingUsername(false);
+                      setNewUsername('');
+                    }}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg">
+                  <span className="text-gray-900">{user?.username}</span>
+                  <button
+                    onClick={() => {
+                      setIsEditingUsername(true);
+                      setNewUsername(user?.username || '');
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>

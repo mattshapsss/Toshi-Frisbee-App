@@ -27,6 +27,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editingPlayerName, setEditingPlayerName] = useState('');
 
   // Offensive positions
   const offensivePositions = [
@@ -292,10 +294,19 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
   };
 
-  // Drag and drop handlers
-  const handleDefenderDragStart = (e: React.DragEvent, defender: any) => {
+  const formatPosition = (position: string) => {
+    return position
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Drag and drop handlers with mobile touch support
+  const handleDefenderDragStart = (e: React.DragEvent | React.TouchEvent, defender: any) => {
     setDraggedDefender(defender);
-    e.dataTransfer.effectAllowed = 'move';
+    if ('dataTransfer' in e) {
+      e.dataTransfer.effectAllowed = 'move';
+    }
   };
 
   const handlePlayerDragOver = (e: React.DragEvent, playerId: string) => {
@@ -320,6 +331,18 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handleDefenderDragEnd = () => {
     setDraggedDefender(null);
     setDragOverPlayer(null);
+  };
+
+  // Touch event handlers for mobile
+  const handleTouchStart = (defender: any) => {
+    setDraggedDefender(defender);
+  };
+
+  const handleTouchEnd = (playerId: string) => {
+    if (draggedDefender) {
+      addDefenderToCurrentPoint(playerId, draggedDefender.id);
+    }
+    setDraggedDefender(null);
   };
 
   // Handler functions for Available Defenders and Current Point
@@ -447,6 +470,31 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
   };
 
+  const handleEditPlayerName = (player: any) => {
+    setEditingPlayerId(player.id);
+    setEditingPlayerName(player.name);
+  };
+
+  const handleSavePlayerName = async () => {
+    if (!game || !editingPlayerId || !editingPlayerName.trim()) return;
+    
+    try {
+      await updateOffensivePlayerMutation.mutateAsync({
+        playerId: editingPlayerId,
+        data: { name: editingPlayerName.trim() }
+      });
+      setEditingPlayerId(null);
+      setEditingPlayerName('');
+    } catch (error) {
+      console.error('Error updating player name:', error);
+    }
+  };
+
+  const handleCancelEditPlayerName = () => {
+    setEditingPlayerId(null);
+    setEditingPlayerName('');
+  };
+
   const exportGameData = async (format: 'json' | 'csv') => {
     if (!game) return;
     
@@ -480,15 +528,20 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const getPlayingTimeStats = () => {
     const stats: any = {};
     
-    if (!game?.team?.defenders || !game?.points) return [];
+    // Use defenders from the team or from the local defenders list
+    const allDefenders = defenders || game?.team?.defenders || [];
+    if (allDefenders.length === 0 || !game?.points) return [];
 
-    game.team.defenders.forEach((defender: any) => {
+    allDefenders.forEach((defender: any) => {
       stats[defender.id] = {
         id: defender.id,
         name: defender.name,
+        jerseyNumber: defender.jerseyNumber,
         pointsPlayed: 0,
         breaks: 0,
-        noBreaks: 0
+        noBreaks: 0,
+        matchupsWon: 0,
+        playingTime: 0
       };
     });
 
@@ -500,6 +553,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
             stats[matchup.defender.id].breaks++;
           } else {
             stats[matchup.defender.id].noBreaks++;
+          }
+          // Track playing time if available
+          if (point.completedAt && point.startedAt) {
+            const duration = new Date(point.completedAt).getTime() - new Date(point.startedAt).getTime();
+            stats[matchup.defender.id].playingTime += duration;
           }
         }
       });
@@ -537,20 +595,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
               Back
             </button>
             {!isPublic && (
-              <div className="flex items-center space-x-2">
-                {game?.isPublic && (
-                  <button
-                    onClick={() => {
-                      const shareUrl = `${window.location.origin}/public/game/${game.shareCode}`;
-                      navigator.clipboard.writeText(shareUrl);
-                      alert('Share link copied to clipboard!');
-                    }}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center"
-                  >
-                    <Share2 className="h-4 w-4 mr-1" />
-                    Share Link
-                  </button>
-                )}
+              <div className="flex flex-wrap items-center gap-1">
                 {game?.status !== 'COMPLETED' && (
                   <button
                     onClick={() => {
@@ -558,24 +603,35 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                         updateGameStatusMutation.mutate('COMPLETED');
                       }
                     }}
-                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium flex items-center"
+                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center"
                   >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Complete Game
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Complete</span>
                   </button>
                 )}
                 <button
                   onClick={clearCurrentPoint}
-                  className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm font-medium"
+                  className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-xs font-medium"
                 >
-                  Clear Point
+                  Clear
                 </button>
                 <div className="relative group">
-                  <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center">
-                    <Download className="h-4 w-4 mr-1" />
-                    Export
+                  <button className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center">
+                    <Download className="h-3 w-3" />
                   </button>
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                    {game?.isPublic && (
+                      <button
+                        onClick={() => {
+                          const shareUrl = `${window.location.origin}/public/game/${game.shareCode}`;
+                          navigator.clipboard.writeText(shareUrl);
+                          alert('Share link copied!');
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Share Link
+                      </button>
+                    )}
                     <button
                       onClick={() => exportGameData('json')}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -699,7 +755,40 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} transition-all`}
                     >
                       <td className="px-2 sm:px-4 py-3">
-                        <span className="font-medium text-gray-900">{player.name}</span>
+                        {editingPlayerId === player.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={editingPlayerName}
+                              onChange={(e) => setEditingPlayerName(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') handleSavePlayerName();
+                                if (e.key === 'Escape') handleCancelEditPlayerName();
+                              }}
+                              className="px-2 py-1 border border-blue-400 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              autoFocus
+                            />
+                            <button
+                              onClick={handleSavePlayerName}
+                              className="p-1 text-green-600 hover:text-green-800"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={handleCancelEditPlayerName}
+                              className="p-1 text-red-600 hover:text-red-800"
+                            >
+                              ✗
+                            </button>
+                          </div>
+                        ) : (
+                          <span 
+                            className="font-medium text-gray-900 cursor-pointer hover:text-blue-600"
+                            onClick={() => !isPublic && handleEditPlayerName(player)}
+                          >
+                            {player.name}
+                          </span>
+                        )}
                       </td>
                       <td className="px-2 sm:px-4 py-3">
                         {!isPublic ? (
@@ -714,12 +803,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                             }`}
                           >
                             {offensivePositions.map(pos => (
-                              <option key={pos} value={pos}>{pos.replace(/_/g, ' ')}</option>
+                              <option key={pos} value={pos}>{formatPosition(pos)}</option>
                             ))}
                           </select>
                         ) : (
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPositionColor(player.position)}`}>
-                            {player.position.replace(/_/g, ' ')}
+                            {formatPosition(player.position)}
                           </span>
                         )}
                       </td>
@@ -849,7 +938,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     </td>
                     <td className="px-2 sm:px-4 py-3">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPositionColor(player.position)}`}>
-                        {player.position.replace(/_/g, ' ')}
+                        {formatPosition(player.position)}
                       </span>
                     </td>
                     <td className="px-2 sm:px-4 py-3">
@@ -894,7 +983,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
               >
                 {offensivePositions.map(pos => (
-                  <option key={pos} value={pos}>{pos.replace(/_/g, ' ')}</option>
+                  <option key={pos} value={pos}>{formatPosition(pos)}</option>
                 ))}
               </select>
               <button
@@ -910,48 +999,91 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           </div>
         )}
 
-        {/* Game Statistics */}
-        {game.team?.defenders && game.team.defenders.length > 0 && (
+        {/* Player Statistics Table */}
+        {defenders.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h2 className="text-lg font-medium mb-4 text-gray-800">Game Statistics</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-800 flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2" />
+                Player Statistics
+              </h2>
+              <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                {game.points?.length || 0} total points
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Player</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">#</th>
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Points</th>
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Breaks</th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">%</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">No Breaks</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Break %</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Playing %</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {getPlayingTimeStats().map((player: any, index: number) => (
-                    <tr key={player.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-3 py-2 font-medium text-gray-900">{player.name}</td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white" 
-                              style={{ backgroundColor: '#3E8EDE' }}>
-                          {player.pointsPlayed}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                          {player.breaks}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          player.pointsPlayed === 0 
-                            ? 'bg-gray-100 text-gray-800'
-                            : (player.breaks / player.pointsPlayed) >= 0.5 
-                              ? 'bg-emerald-100 text-emerald-800' 
-                              : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {player.pointsPlayed === 0 ? '-' : `${Math.round((player.breaks / player.pointsPlayed) * 100)}%`}
-                        </span>
+                  {getPlayingTimeStats().length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
+                        No statistics yet. Save points to track player performance.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    getPlayingTimeStats().map((player: any, index: number) => {
+                      const totalPoints = game.points?.length || 1;
+                      const playingPercentage = Math.round((player.pointsPlayed / totalPoints) * 100);
+                      
+                      return (
+                        <tr key={player.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-3 py-2 font-medium text-gray-900">{player.name}</td>
+                          <td className="px-3 py-2 text-center text-gray-600">
+                            {player.jerseyNumber || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white" 
+                                  style={{ backgroundColor: '#3E8EDE' }}>
+                              {player.pointsPlayed}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                              {player.breaks}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
+                              {player.noBreaks}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              player.pointsPlayed === 0 
+                                ? 'bg-gray-100 text-gray-800'
+                                : (player.breaks / player.pointsPlayed) >= 0.5 
+                                  ? 'bg-emerald-100 text-emerald-800' 
+                                  : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {player.pointsPlayed === 0 ? '-' : `${Math.round((player.breaks / player.pointsPlayed) * 100)}%`}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${playingPercentage}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-600">{playingPercentage}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

@@ -81,6 +81,11 @@ export const authApi = {
     const response = await api.put('/auth/password', data);
     return response.data;
   },
+  
+  updateUsername: async (data: { username: string }) => {
+    const response = await api.put('/auth/username', data);
+    return response.data;
+  },
 };
 
 // Teams API

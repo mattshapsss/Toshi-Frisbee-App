@@ -234,4 +234,42 @@ router.put('/password', authenticateToken, async (req: AuthRequest, res, next) =
   }
 });
 
+// Update username
+router.put('/username', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const schema = z.object({
+      username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/),
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Check if username is already taken
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        username: data.username,
+        NOT: { id: req.user!.id }
+      }
+    });
+    
+    if (existingUser) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
+    
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { username: data.username },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        createdAt: true,
+      }
+    });
+    
+    res.json({ user: updatedUser, message: 'Username updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

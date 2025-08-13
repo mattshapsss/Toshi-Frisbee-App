@@ -60,7 +60,8 @@ export default function HomePage() {
     mutationFn: gamesApi.create,
     onSuccess: (game) => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
-      navigate(`/game/${game.id}`);
+      setNewGameName('');
+      // Stay on home page after creating game
     }
   });
 
@@ -100,10 +101,9 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl sm:text-2xl font-semibold">Ultimate D-Line Manager</h1>
-              {currentTeam && (
-                <p className="text-xs text-gray-400 mt-1">Team: {currentTeam.name}</p>
-              )}
+              <h1 className="text-xl sm:text-2xl font-semibold">
+                {currentTeam ? `Team: ${currentTeam.name}` : 'Ultimate D-Line Manager'}
+              </h1>
             </div>
             <ProfileDropdown />
           </div>
@@ -112,7 +112,7 @@ export default function HomePage() {
       
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="text-center mb-6">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800">D-Line Command Center</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800">Ultimate D-Line Manager</h2>
         </div>
 
         {/* Roster & Statistics Button */}
@@ -161,22 +161,22 @@ export default function HomePage() {
         {currentTeam && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">Create New Game</h3>
-            <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={newGameName}
                 onChange={(e) => setNewGameName(e.target.value)}
                 placeholder="Enter game name (e.g., Tufts vs Opponent)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateGame()}
               />
               <button
                 onClick={handleCreateGame}
                 disabled={!newGameName.trim() || createGameMutation.isPending}
-                className="w-full px-6 py-3 text-white rounded-lg font-medium disabled:bg-gray-300 hover:opacity-90 text-base"
+                className="px-4 py-2 text-white rounded-lg font-medium disabled:bg-gray-300 hover:opacity-90 text-sm sm:text-base"
                 style={{ backgroundColor: '#3E8EDE' }}
               >
-                <Plus className="h-5 w-5 mr-2 inline" />
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-1 inline" />
                 Create Game
               </button>
             </div>

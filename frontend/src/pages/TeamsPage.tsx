@@ -126,21 +126,23 @@ export default function TeamsPage() {
               </button>
               <h1 className="text-xl font-semibold">Teams</h1>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowJoinTeam(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                className="px-2 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
               >
-                <UserPlus className="h-5 w-5 mr-2 inline" />
-                Join Team
+                <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2 inline" />
+                <span className="hidden sm:inline">Join Team</span>
+                <span className="sm:hidden">Join</span>
               </button>
               <button
                 onClick={() => setShowCreateTeam(true)}
-                className="px-4 py-2 bg-tufts-blue text-white rounded-lg hover:opacity-90"
+                className="px-2 sm:px-4 py-2 bg-tufts-blue text-white rounded-lg hover:opacity-90 text-sm sm:text-base"
                 style={{ backgroundColor: '#3E8EDE' }}
               >
-                <Plus className="h-5 w-5 mr-2 inline" />
-                New Team
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2 inline" />
+                <span className="hidden sm:inline">New Team</span>
+                <span className="sm:hidden">New</span>
               </button>
             </div>
           </div>
@@ -273,21 +275,21 @@ export default function TeamsPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex gap-1 flex-shrink-0">
                     <button
                       onClick={() => navigate(`/teams/${team.id}/roster`)}
-                      className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+                      className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
                       title="Manage roster"
                     >
-                      <Users className="h-5 w-5" />
+                      <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                     {(team.role === 'OWNER' || team.role === 'ADMIN') && (
                       <button
                         onClick={() => setShowInviteMember(team.id)}
-                        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+                        className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
                         title="Invite member"
                       >
-                        <UserPlus className="h-5 w-5" />
+                        <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
                       </button>
                     )}
                     {(team.role === 'OWNER' || team.role === 'ADMIN') && (
@@ -297,10 +299,10 @@ export default function TeamsPage() {
                           setEditName(team.name);
                           setEditDescription(team.description || '');
                         }}
-                        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+                        className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
                         title="Team settings"
                       >
-                        <Settings className="h-5 w-5" />
+                        <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
                       </button>
                     )}
                   </div>
