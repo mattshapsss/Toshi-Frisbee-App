@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Users, Target, Calendar, LogOut, BarChart3, UserPlus, PlayCircle, CheckCircle, Archive, Clock } from 'lucide-react';
+import { Plus, Users, Target, Calendar, LogOut, BarChart3, UserPlus, PlayCircle, CheckCircle, Archive, Clock, Trash2, Edit2, MoreVertical } from 'lucide-react';
 import { gamesApi, teamsApi, authApi } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { useTeamStore } from '../stores/teamStore';
@@ -16,6 +16,9 @@ export default function HomePage() {
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [gameFilter, setGameFilter] = useState<'all' | 'active' | 'completed'>('active');
+  const [editingGameId, setEditingGameId] = useState<string | null>(null);
+  const [editingGameName, setEditingGameName] = useState('');
+  const [openMenuGameId, setOpenMenuGameId] = useState<string | null>(null);
 
   // Fetch user's teams
   const { data: teams = [] } = useQuery({
@@ -65,6 +68,24 @@ export default function HomePage() {
     }
   });
 
+  // Update game mutation
+  const updateGameMutation = useMutation({
+    mutationFn: ({ gameId, data }: any) => gamesApi.update(gameId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      setEditingGameId(null);
+      setEditingGameName('');
+    }
+  });
+
+  // Delete game mutation
+  const deleteGameMutation = useMutation({
+    mutationFn: gamesApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+    }
+  });
+
   const handleCreateGame = () => {
     if (!newGameName.trim() || !currentTeam) return;
     
@@ -82,6 +103,25 @@ export default function HomePage() {
   const handleCreateTeam = () => {
     if (!newTeamName.trim()) return;
     createTeamMutation.mutate({ name: newTeamName.trim() });
+  };
+
+  const handleEditGame = (game: any) => {
+    setEditingGameId(game.id);
+    setEditingGameName(game.name);
+    setOpenMenuGameId(null);
+  };
+
+  const handleSaveGameName = (gameId: string) => {
+    if (editingGameName.trim()) {
+      updateGameMutation.mutate({ gameId, data: { name: editingGameName.trim() } });
+    }
+  };
+
+  const handleDeleteGame = (gameId: string) => {
+    if (confirm('Are you sure you want to delete this game?')) {
+      deleteGameMutation.mutate(gameId);
+      setOpenMenuGameId(null);
+    }
   };
 
 
@@ -166,7 +206,7 @@ export default function HomePage() {
                 type="text"
                 value={newGameName}
                 onChange={(e) => setNewGameName(e.target.value)}
-                placeholder="Enter game name (e.g., Tufts vs Opponent)"
+                placeholder={`Enter game name (e.g., ${currentTeam?.name || 'Team'} vs Opponent)`}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateGame()}
               />
@@ -238,24 +278,70 @@ export default function HomePage() {
                   .map((game: any) => (
                   <div 
                     key={game.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow p-4 cursor-pointer"
-                    onClick={() => navigate(`/game/${game.id}`)}
+                    className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow p-4"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => navigate(`/game/${game.id}`)}
+                      >
                         <div className="flex items-center space-x-2">
-                          <h4 className="text-base font-semibold text-gray-800 truncate">{game.name}</h4>
-                          {game.status === 'COMPLETED' && (
-                            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                          )}
-                          {game.status === 'IN_PROGRESS' && (
-                            <PlayCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                          )}
-                          {game.status === 'SETUP' && (
-                            <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                          )}
-                          {game.isPublic && (
-                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Public</span>
+                          {editingGameId === game.id ? (
+                            <div className="flex items-center gap-1 flex-1">
+                              <input
+                                type="text"
+                                value={editingGameName}
+                                onChange={(e) => setEditingGameName(e.target.value)}
+                                onKeyPress={(e) => {
+                                  e.stopPropagation();
+                                  if (e.key === 'Enter') {
+                                    handleSaveGameName(game.id);
+                                  }
+                                  if (e.key === 'Escape') {
+                                    setEditingGameId(null);
+                                    setEditingGameName('');
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2 py-1 border border-blue-400 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1"
+                                autoFocus
+                              />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveGameName(game.id);
+                                }}
+                                className="p-1 text-green-600 hover:text-green-800"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingGameId(null);
+                                  setEditingGameName('');
+                                }}
+                                className="p-1 text-red-600 hover:text-red-800"
+                              >
+                                ✗
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <h4 className="text-base font-semibold text-gray-800 truncate">{game.name}</h4>
+                              {game.status === 'COMPLETED' && (
+                                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                              )}
+                              {game.status === 'IN_PROGRESS' && (
+                                <PlayCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              )}
+                              {game.status === 'SETUP' && (
+                                <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                              )}
+                              {game.isPublic && (
+                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Public</span>
+                              )}
+                            </>
                           )}
                         </div>
                         <div className="text-sm text-gray-600 mt-1 flex items-center">
@@ -265,6 +351,41 @@ export default function HomePage() {
                         <div className="text-sm text-gray-500 mt-1">
                           <span className="font-medium">{game._count?.points || 0}</span> points tracked
                         </div>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuGameId(openMenuGameId === game.id ? null : game.id);
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded-full"
+                        >
+                          <MoreVertical className="h-4 w-4 text-gray-500" />
+                        </button>
+                        {openMenuGameId === game.id && (
+                          <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditGame(game);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                              <span>Edit Name</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteGame(game.id);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Delete Game</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

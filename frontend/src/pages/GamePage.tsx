@@ -817,12 +817,15 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                         <div className="min-h-10 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                           <div className="flex flex-wrap gap-1 items-center">
                             {player.availableDefenders?.map((ad: any) => {
-                              const isInCurrentPoint = player.currentPointDefender?.defenderId === ad.defender.id;
+                              // Check if this defender is in ANY player's current point
+                              const isInAnyCurrentPoint = game.offensivePlayers?.some((p: any) => 
+                                p.currentPointDefender?.defenderId === ad.defender.id
+                              );
                               return (
                                 <div 
                                   key={ad.id}
                                   className={`px-2 py-1 rounded-md text-xs flex items-center space-x-1 ${
-                                    isInCurrentPoint ? 'opacity-50' : ''
+                                    isInAnyCurrentPoint ? 'opacity-50' : ''
                                   } text-white`}
                                   style={{ backgroundColor: '#3E8EDE' }}
                                 >
@@ -1108,6 +1111,9 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
+                          <span className="text-gray-400 text-sm">
+                            {isExpanded ? '▼' : '▶'}
+                          </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             point.gotBreak 
                               ? 'bg-emerald-500 text-white' 
@@ -1119,22 +1125,17 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                             Point #{pointNumber}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          {!isPublic && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deletePointMutation.mutate(point.id);
-                              }}
-                              className="p-1 text-red-600 hover:text-red-800 rounded"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                          )}
-                          <span className="text-gray-400 text-sm">
-                            {isExpanded ? '▼' : '▶'}
-                          </span>
-                        </div>
+                        {!isPublic && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePointMutation.mutate(point.id);
+                            }}
+                            className="p-1 text-red-600 hover:text-red-800 rounded"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                     

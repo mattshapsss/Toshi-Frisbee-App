@@ -46,9 +46,6 @@ export default function ProfileDropdown() {
       >
         <div className="text-right">
           <div className="text-sm font-medium">{user?.username}</div>
-          {currentTeam && (
-            <div className="text-xs text-gray-300">{currentTeam.name}</div>
-          )}
         </div>
         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
