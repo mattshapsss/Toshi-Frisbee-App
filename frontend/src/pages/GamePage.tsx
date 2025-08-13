@@ -26,7 +26,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const [draggedPlayer, setDraggedPlayer] = useState<any | null>(null);
   const [touchTimeout, setTouchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStartPos, setDragStartPos] = useState<{x: number, y: number} | null>(null);
+  const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
+  const [draggedRowHTML, setDraggedRowHTML] = useState<string>('');
   const [pointStartTime, setPointStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -386,25 +387,70 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   // Touch event handlers for mobile player swapping
   const handlePlayerTouchStart = (e: React.TouchEvent, player: any) => {
     const touch = e.touches[0];
-    setDragStartPos({ x: touch.clientX, y: touch.clientY });
+    const initialPos = { x: touch.clientX, y: touch.clientY };
+    let hasMoved = false;
+    
+    // Store the row HTML for visual feedback
+    const row = e.currentTarget as HTMLTableRowElement;
+    const clonedRow = row.cloneNode(true) as HTMLElement;
+    clonedRow.style.width = `${row.offsetWidth}px`;
+    setDraggedRowHTML(clonedRow.outerHTML);
+    
+    // Track if user moves finger (to allow scrolling if they don't)
+    const moveHandler = (moveEvent: TouchEvent) => {
+      const moveTouch = moveEvent.touches[0];
+      const deltaX = Math.abs(moveTouch.clientX - initialPos.x);
+      const deltaY = Math.abs(moveTouch.clientY - initialPos.y);
+      
+      // If moved more than 10px, consider it a move intent
+      if (deltaX > 10 || deltaY > 10) {
+        hasMoved = true;
+      }
+    };
+    
+    document.addEventListener('touchmove', moveHandler, { passive: true });
     
     // Start long press timer
     const timeout = setTimeout(() => {
-      setDraggedPlayer(player);
-      setIsDragging(true);
-      // Add haptic feedback if available
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
+      // Only start drag if finger hasn't moved much (not scrolling)
+      if (!hasMoved) {
+        setDraggedPlayer(player);
+        setIsDragging(true);
+        setDragPosition(initialPos);
+        // Add haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
       }
-    }, 500); // 500ms long press
+      document.removeEventListener('touchmove', moveHandler);
+    }, 400); // 400ms long press (slightly shorter for better UX)
     
     setTouchTimeout(timeout);
+    
+    // Clean up on touch end
+    const endHandler = () => {
+      clearTimeout(timeout);
+      document.removeEventListener('touchmove', moveHandler);
+      document.removeEventListener('touchend', endHandler);
+    };
+    document.addEventListener('touchend', endHandler, { once: true });
   };
 
   const handlePlayerTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || !draggedPlayer) return;
     
+    e.preventDefault(); // Prevent scrolling while dragging
     const touch = e.touches[0];
+    
+    // Update drag position to follow finger
+    setDragPosition({ x: touch.clientX, y: touch.clientY });
+    
+    // Find element under finger (need to temporarily hide dragged element)
+    const draggedElement = document.getElementById('dragged-player-clone');
+    if (draggedElement) {
+      draggedElement.style.pointerEvents = 'none';
+    }
+    
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
     const playerRow = element?.closest('tr[data-player-id]');
     
@@ -426,11 +472,19 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
     
     if (!isDragging || !draggedPlayer) {
-      setDragStartPos(null);
+      setDragPosition(null);
+      setDraggedRowHTML('');
       return;
     }
     
     const touch = e.changedTouches[0];
+    
+    // Find element under finger
+    const draggedElement = document.getElementById('dragged-player-clone');
+    if (draggedElement) {
+      draggedElement.style.display = 'none';
+    }
+    
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
     const playerRow = element?.closest('tr[data-player-id]');
     
@@ -439,15 +493,19 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       if (targetPlayerId && targetPlayerId !== draggedPlayer.id) {
         const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
         if (targetPlayer) {
+          // Store the bench status before swapping
+          const draggedIsBench = draggedPlayer.isBench;
+          const targetIsBench = targetPlayer.isBench;
+          
           // Swap the players
           try {
             await updateOffensivePlayerMutation.mutateAsync({
               playerId: draggedPlayer.id,
-              data: { isBench: targetPlayer.isBench }
+              data: { isBench: targetIsBench }
             });
             await updateOffensivePlayerMutation.mutateAsync({
               playerId: targetPlayer.id,
-              data: { isBench: draggedPlayer.isBench }
+              data: { isBench: draggedIsBench }
             });
             
             // Haptic feedback on successful swap
@@ -465,7 +523,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     setDraggedPlayer(null);
     setDragOverPlayer(null);
     setIsDragging(false);
-    setDragStartPos(null);
+    setDragPosition(null);
+    setDraggedRowHTML('');
   };
 
   // Handler functions for Available Defenders and Current Point
@@ -664,20 +723,20 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Floating dragged player indicator for mobile */}
-      {isDragging && draggedPlayer && (
+      {/* Floating dragged player row for mobile */}
+      {isDragging && draggedPlayer && dragPosition && (
         <div
-          className="fixed z-50 pointer-events-none bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg opacity-90"
+          id="dragged-player-clone"
+          className="fixed z-50 pointer-events-none"
           style={{
-            left: dragStartPos?.x || 0,
-            top: (dragStartPos?.y || 0) - 50,
-            transform: 'translateX(-50%)'
+            left: dragPosition.x - 100,
+            top: dragPosition.y - 30,
+            opacity: 0.9
           }}
         >
-          <div className="flex items-center space-x-2">
-            <span className="font-medium">{draggedPlayer.name}</span>
-            <span className="text-xs opacity-75">{draggedPlayer.isBench ? 'Bench' : 'Active'}</span>
-          </div>
+          <table className="bg-white shadow-2xl rounded-lg border-2 border-blue-500">
+            <tbody dangerouslySetInnerHTML={{ __html: draggedRowHTML }} />
+          </table>
         </div>
       )}
       
@@ -872,7 +931,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       onTouchMove={(e) => !isPublic && handlePlayerTouchMove(e)}
                       onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
                       style={{
-                        touchAction: !isPublic ? 'none' : 'auto',
+                        touchAction: isDragging ? 'none' : 'auto',
                         userSelect: isDragging ? 'none' : 'auto',
                         WebkitUserSelect: isDragging ? 'none' : 'auto'
                       }}
@@ -1083,7 +1142,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     onTouchMove={(e) => !isPublic && handlePlayerTouchMove(e)}
                     onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
                     style={{
-                      touchAction: !isPublic ? 'none' : 'auto',
+                      touchAction: isDragging ? 'none' : 'auto',
                       userSelect: isDragging ? 'none' : 'auto',
                       WebkitUserSelect: isDragging ? 'none' : 'auto'
                     }}
