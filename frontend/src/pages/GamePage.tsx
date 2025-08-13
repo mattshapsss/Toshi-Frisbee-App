@@ -427,14 +427,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       const deltaY = Math.abs(moveTouch.clientY - touchInfo.initialY);
       
       // If vertical movement is greater, it's likely a scroll
+      // Only consider it scrolling if drag hasn't been activated yet
       if (!touchInfo.isDragActivated && deltaY > deltaX && deltaY > 5) {
         touchInfo.isScrolling = true;
         clearTimeout(timeout);
-        // Clean up if scrolling
-        setIsDragging(false);
-        setDraggedPlayer(null);
-        setDragPosition(null);
-        setDraggedRowHTML('');
+        // Don't clean up drag state here - it might not have been set yet
       }
       
       // Update position if drag is active
@@ -485,23 +482,30 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           if (playerRow) {
             const targetPlayerId = playerRow.getAttribute('data-player-id');
             if (targetPlayerId && targetPlayerId !== touchInfo.player.id) {
+              // Get fresh player data from game state
+              const draggedPlayer = game.offensivePlayers?.find((p: any) => p.id === touchInfo.player.id);
               const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
-              if (targetPlayer) {
-                // Swap players - store original bench states first
-                const draggedPlayerOriginalBench = touchInfo.player.isBench;
-                const targetPlayerOriginalBench = targetPlayer.isBench;
-                
-                try {
-                  await updateOffensivePlayerMutation.mutateAsync({
-                    playerId: touchInfo.player.id,
-                    data: { isBench: targetPlayerOriginalBench }
-                  });
-                  await updateOffensivePlayerMutation.mutateAsync({
-                    playerId: targetPlayer.id,
-                    data: { isBench: draggedPlayerOriginalBench }
-                  });
-                } catch (error) {
-                  console.error('Error swapping players:', error);
+              
+              if (draggedPlayer && targetPlayer) {
+                // Only swap if they're in different sections (bench vs active)
+                if (draggedPlayer.isBench !== targetPlayer.isBench) {
+                  // Store original bench states
+                  const draggedPlayerOriginalBench = draggedPlayer.isBench;
+                  const targetPlayerOriginalBench = targetPlayer.isBench;
+                  
+                  try {
+                    // Swap their bench status
+                    await updateOffensivePlayerMutation.mutateAsync({
+                      playerId: draggedPlayer.id,
+                      data: { isBench: targetPlayerOriginalBench }
+                    });
+                    await updateOffensivePlayerMutation.mutateAsync({
+                      playerId: targetPlayer.id,
+                      data: { isBench: draggedPlayerOriginalBench }
+                    });
+                  } catch (error) {
+                    console.error('Error swapping players:', error);
+                  }
                 }
               }
             }
