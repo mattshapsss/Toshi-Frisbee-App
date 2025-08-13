@@ -457,13 +457,16 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       return;
     }
     
-    // Check if this is the last active player and we're dropping from bench
-    const activePlayers = players.filter((p: any) => !p.isBench);
-    const isTargetLastActive = !targetPlayer.isBench && targetPlayer.id === activePlayers[activePlayers.length - 1]?.id;
-    const isDroppingFromBench = draggedPlayer.isBench;
-    
-    // Remove the dragged item
+    // Remove the dragged item first
     const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+    
+    // Now find the target's new index after removal
+    const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+    
+    // Check if target is the last active player
+    const activePlayers = newPlayers.filter((p: any) => !p.isBench);
+    const isTargetLastActive = !targetPlayer.isBench && 
+      (newTargetIndex === -1 || targetPlayer.id === activePlayers[activePlayers.length - 1]?.id);
     
     // Update bench status if moving between sections
     if (draggedPlayer.isBench !== targetPlayer.isBench) {
@@ -475,16 +478,22 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       });
     }
     
-    // Calculate new index after removal
-    let insertIndex = targetIndex;
-    if (draggedIndex < targetIndex) {
-      // Item was removed before target, so target index shifted down
-      insertIndex = targetIndex - 1;
-    }
-    
-    // If dropping from bench to last active position, insert after it (above bench)
-    if (isTargetLastActive && isDroppingFromBench) {
-      insertIndex = insertIndex + 1;
+    // Calculate insertion index
+    let insertIndex;
+    if (isTargetLastActive && draggedPlayer.isBench && !targetPlayer.isBench) {
+      // Dropping from bench onto last active - insert at the boundary
+      const firstBenchIdx = newPlayers.findIndex((p: any) => p.isBench);
+      insertIndex = firstBenchIdx !== -1 ? firstBenchIdx : newPlayers.length;
+    } else if (newTargetIndex !== -1) {
+      // Normal reordering
+      insertIndex = newTargetIndex;
+      if (draggedIndex > targetIndex) {
+        // If we dragged from after the target, insert after the target's new position
+        insertIndex = newTargetIndex + 1;
+      }
+    } else {
+      // Target not found (shouldn't happen), insert at original position
+      insertIndex = Math.min(draggedIndex, newPlayers.length);
     }
     
     // Insert at new position
@@ -1358,7 +1367,10 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 <tr
                   id="bench-separator"
                   data-bench-separator="true"
-                  className={`${dragOverBench ? 'ring-2 ring-blue-400 bg-blue-100' : ''} transition-all`}
+                  className={`${dragOverBench ? 'bg-blue-50' : ''} transition-all`}
+                  style={{
+                    borderBottom: dragOverBench && draggedPlayer && !draggedPlayer.isBench ? '3px solid #3E8EDE' : undefined
+                  }}
                   onDragOver={(e) => {
                     e.preventDefault();
                     if (draggedPlayer) {
