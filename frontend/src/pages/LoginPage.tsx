@@ -69,7 +69,11 @@ export default function LoginPage() {
                   <input
                     type="text"
                     required
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    autoComplete="username email"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    inputMode="email"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
                     placeholder="Enter your email or username"
                     value={formData.emailOrUsername}
                     onChange={(e) => setFormData({ ...formData, emailOrUsername: e.target.value })}

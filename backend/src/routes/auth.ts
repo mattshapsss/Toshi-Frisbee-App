@@ -39,11 +39,14 @@ router.post('/register', async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
     
+    // Normalize email to lowercase
+    const normalizedEmail = data.email.toLowerCase();
+    
     // Check if user exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: data.email },
+          { email: normalizedEmail },
           { username: data.username },
         ],
       },
@@ -51,19 +54,20 @@ router.post('/register', async (req, res, next) => {
     
     if (existingUser) {
       return res.status(409).json({ 
-        error: existingUser.email === data.email 
+        error: existingUser.email === normalizedEmail 
           ? 'Email already registered' 
-          : 'Username already taken' 
+          : 'Username already taken',
+        field: existingUser.email === normalizedEmail ? 'email' : 'username'
       });
     }
     
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
     
-    // Create user
+    // Create user with normalized email
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         username: data.username,
         password: hashedPassword,
       },
@@ -83,6 +87,13 @@ router.post('/register', async (req, res, next) => {
       ...tokens,
     });
   } catch (error) {
+    console.error('Registration error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: error.errors[0]?.message || 'Invalid input',
+        field: error.errors[0]?.path[0]
+      });
+    }
     next(error);
   }
 });
@@ -92,25 +103,37 @@ router.post('/login', async (req, res, next) => {
   try {
     const data = loginSchema.parse(req.body);
     
-    // Find user by email or username
+    // Validate input
+    if (!data.emailOrUsername || !data.password) {
+      return res.status(400).json({ 
+        error: 'Email/username and password are required' 
+      });
+    }
+    
+    // Find user by email or username (case-insensitive for better UX)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: data.emailOrUsername },
+          { email: data.emailOrUsername.toLowerCase() },
           { username: data.emailOrUsername },
         ],
       },
     });
     
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      // Don't reveal whether email/username exists
+      return res.status(401).json({ 
+        error: 'Invalid email/username or password' 
+      });
     }
     
     // Verify password
     const isValidPassword = await bcrypt.compare(data.password, user.password);
     
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ 
+        error: 'Invalid email/username or password' 
+      });
     }
     
     // Generate tokens
@@ -126,6 +149,13 @@ router.post('/login', async (req, res, next) => {
       ...tokens,
     });
   } catch (error) {
+    console.error('Login error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Invalid input format',
+        details: error.errors 
+      });
+    }
     next(error);
   }
 });
@@ -201,11 +231,20 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res, next) => {
 router.put('/password', authenticateToken, async (req: AuthRequest, res, next) => {
   try {
     const schema = z.object({
-      currentPassword: z.string(),
-      newPassword: z.string().min(8),
+      currentPassword: z.string().min(1, 'Current password is required'),
+      newPassword: z.string()
+        .min(8, 'Password must be at least 8 characters')
+        .max(100, 'Password is too long'),
     });
     
     const data = schema.parse(req.body);
+    
+    // Validate new password is different from current
+    if (data.currentPassword === data.newPassword) {
+      return res.status(400).json({ 
+        error: 'New password must be different from current password' 
+      });
+    }
     
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
@@ -215,21 +254,43 @@ router.put('/password', authenticateToken, async (req: AuthRequest, res, next) =
       return res.status(404).json({ error: 'User not found' });
     }
     
+    // Verify current password
     const isValidPassword = await bcrypt.compare(data.currentPassword, user.password);
     
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      return res.status(401).json({ 
+        error: 'Current password is incorrect',
+        field: 'currentPassword'
+      });
     }
     
+    // Hash new password
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
     
+    // Update password
     await prisma.user.update({
       where: { id: req.user!.id },
-      data: { password: hashedPassword },
+      data: { 
+        password: hashedPassword,
+        updatedAt: new Date()
+      },
     });
     
-    res.json({ message: 'Password updated successfully' });
+    // Generate new tokens for security
+    const tokens = generateTokens(user.id);
+    
+    res.json({ 
+      message: 'Password updated successfully',
+      ...tokens
+    });
   } catch (error) {
+    console.error('Password update error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: error.errors[0]?.message || 'Invalid password format',
+        field: error.errors[0]?.path[0]
+      });
+    }
     next(error);
   }
 });
@@ -281,10 +342,11 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res, next)
     });
     
     const data = schema.parse(req.body);
+    const userId = req.user!.id;
     
     // Verify password
     const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
+      where: { id: userId },
     });
     
     if (!user) {
@@ -297,13 +359,44 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res, next)
       return res.status(401).json({ error: 'Incorrect password' });
     }
     
-    // Delete user (cascades will handle related data)
-    await prisma.user.delete({
-      where: { id: req.user!.id },
+    // Use transaction to ensure all deletions happen or none
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete games created by user (this will cascade to points, matchups, etc.)
+      await tx.game.deleteMany({
+        where: { createdById: userId }
+      });
+      
+      // 2. Find teams where user is the only member
+      const userTeams = await tx.teamMember.findMany({
+        where: { userId },
+        include: {
+          team: {
+            include: {
+              members: true
+            }
+          }
+        }
+      });
+      
+      // Delete teams where user is the only member
+      for (const membership of userTeams) {
+        if (membership.team.members.length === 1) {
+          // Delete the team (this will cascade to defenders, games, etc.)
+          await tx.team.delete({
+            where: { id: membership.teamId }
+          });
+        }
+      }
+      
+      // 3. Finally delete the user (cascades will handle TeamMember, GameSession, Activity)
+      await tx.user.delete({
+        where: { id: userId }
+      });
     });
     
-    res.json({ message: 'Account deleted successfully' });
+    res.json({ message: 'Account and all associated data deleted successfully' });
   } catch (error) {
+    console.error('Account deletion error:', error);
     next(error);
   }
 });

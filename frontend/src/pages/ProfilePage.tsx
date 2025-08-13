@@ -25,14 +25,24 @@ export default function ProfilePage() {
 
   const updatePasswordMutation = useMutation({
     mutationFn: authApi.updatePassword,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update tokens if returned
+      if (data.accessToken && data.refreshToken) {
+        const authStore = useAuthStore.getState();
+        authStore.setTokens(data.accessToken, data.refreshToken);
+      }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       alert('Password updated successfully!');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error || 'Failed to update password');
+      const errorMessage = error.response?.data?.error || 'Failed to update password';
+      const field = error.response?.data?.field;
+      if (field === 'currentPassword') {
+        setCurrentPassword('');
+      }
+      alert(errorMessage);
     }
   });
 
@@ -70,8 +80,12 @@ export default function ProfilePage() {
       alert('New passwords do not match');
       return;
     }
-    if (newPassword.length < 6) {
-      alert('New password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      alert('New password must be at least 8 characters');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      alert('New password must be different from current password');
       return;
     }
 
