@@ -1580,16 +1580,23 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       <div className="min-h-10 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                         <div className="flex flex-wrap gap-1 items-center">
                           {player.availableDefenders?.map((ad: any) => {
+                            // Check if this defender is in ANY player's current point
                             const isInAnyCurrentPoint = game.offensivePlayers?.some((p: any) => 
                               p.currentPointDefender?.defenderId === ad.defender.id
                             );
+                            // Check if defender is selected in Call Your Line
+                            const isSelected = selectedDefenderIds.includes(ad.defender.id);
+                            
                             return (
                               <div 
                                 key={ad.id}
                                 className={`px-2 py-1 rounded-md text-xs flex items-center space-x-1 ${
-                                  isInAnyCurrentPoint ? 'opacity-50' : ''
+                                  isInAnyCurrentPoint && !isSelected ? 'opacity-50' : ''
                                 } text-white`}
-                                style={{ backgroundColor: '#3E8EDE' }}
+                                style={{ 
+                                  backgroundColor: isSelected || isInAnyCurrentPoint ? '#3E8EDE' : '#93C5FD',
+                                  opacity: isSelected && !isInAnyCurrentPoint ? 1 : isInAnyCurrentPoint ? 0.6 : 0.5
+                                }}
                               >
                                 <span>{ad.defender.name}</span>
                                 {!isPublic && (
@@ -1659,11 +1666,13 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                               defaultValue=""
                             >
                               <option value="">{player.currentPointDefender ? '↻ Replace' : '+ Select'}</option>
-                              {player.availableDefenders?.map((ad: any) => (
-                                <option key={ad.defender.id} value={ad.defender.id}>
-                                  {ad.defender.name}
-                                </option>
-                              ))}
+                              {player.availableDefenders
+                                ?.filter((ad: any) => selectedDefenderIds.includes(ad.defender.id))
+                                .map((ad: any) => (
+                                  <option key={ad.defender.id} value={ad.defender.id}>
+                                    {ad.defender.name}
+                                  </option>
+                                ))}
                             </select>
                           )}
                           {!player.currentPointDefender && !player.availableDefenders?.length && !isPublic && (
