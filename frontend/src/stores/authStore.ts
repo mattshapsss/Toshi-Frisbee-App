@@ -42,21 +42,29 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
         }),
       
-      logout: () => 
+      logout: () => {
+        // Clear localStorage for team store
+        localStorage.removeItem('team-storage');
+        
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
       
-      clearAuth: () => 
+      clearAuth: () => {
+        // Clear localStorage for team store
+        localStorage.removeItem('team-storage');
+        
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: 'auth-storage',

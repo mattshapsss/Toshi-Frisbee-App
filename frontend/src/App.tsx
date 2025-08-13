@@ -26,13 +26,29 @@ function App() {
           const teams = await teamsApi.list();
           setTeams(teams);
           
+          // Validate that current team still exists for this user
+          if (currentTeam) {
+            const teamStillExists = teams.some(t => t.id === currentTeam.id);
+            if (!teamStillExists) {
+              // Clear invalid cached team
+              setCurrentTeam(null);
+            }
+          }
+          
           // If no current team but teams exist, select the first one
           if (!currentTeam && teams.length > 0) {
             setCurrentTeam(teams[0]);
           }
         } catch (error) {
           console.error('Failed to load teams:', error);
+          // Clear team data on error
+          setCurrentTeam(null);
+          setTeams([]);
         }
+      } else {
+        // Clear team data when not authenticated
+        setCurrentTeam(null);
+        setTeams([]);
       }
       setLoading(false);
     };
