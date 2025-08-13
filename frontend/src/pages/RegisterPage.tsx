@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { authApi, teamsApi } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { useTeamStore } from '../stores/teamStore';
-import { Users, Shield } from 'lucide-react';
+import { Users, Shield, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
