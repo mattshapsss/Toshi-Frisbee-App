@@ -388,7 +388,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handlePlayerTouchStart = (e: React.TouchEvent, player: any) => {
     const touch = e.touches[0];
     const initialPos = { x: touch.clientX, y: touch.clientY };
-    let hasMoved = false;
+    let isScrolling = false;
+    let isDragActivated = false;
     
     // Store the row HTML for visual feedback
     const row = e.currentTarget as HTMLTableRowElement;
@@ -396,24 +397,50 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     clonedRow.style.width = `${row.offsetWidth}px`;
     setDraggedRowHTML(clonedRow.outerHTML);
     
-    // Track if user moves finger (to allow scrolling if they don't)
+    // Movement tracking to detect scroll vs drag intent
     const moveHandler = (moveEvent: TouchEvent) => {
       const moveTouch = moveEvent.touches[0];
       const deltaX = Math.abs(moveTouch.clientX - initialPos.x);
       const deltaY = Math.abs(moveTouch.clientY - initialPos.y);
       
-      // If moved more than 10px, consider it a move intent
-      if (deltaX > 10 || deltaY > 10) {
-        hasMoved = true;
+      // If vertical movement is greater, it's likely a scroll
+      if (!isDragActivated && deltaY > deltaX && deltaY > 5) {
+        isScrolling = true;
+        clearTimeout(timeout);
+      }
+      
+      // Update position if drag is active
+      if (isDragActivated && !isScrolling) {
+        moveEvent.preventDefault(); // Prevent scrolling while dragging
+        setDragPosition({ x: moveTouch.clientX, y: moveTouch.clientY });
+        
+        // Find element under finger
+        const draggedElement = document.getElementById('dragged-player-clone');
+        if (draggedElement) {
+          draggedElement.style.pointerEvents = 'none';
+        }
+        
+        const element = document.elementFromPoint(moveTouch.clientX, moveTouch.clientY);
+        const playerRow = element?.closest('tr[data-player-id]');
+        
+        if (playerRow) {
+          const playerId = playerRow.getAttribute('data-player-id');
+          if (playerId && playerId !== player.id) {
+            setDragOverPlayer(playerId);
+          }
+        } else {
+          setDragOverPlayer(null);
+        }
       }
     };
     
-    document.addEventListener('touchmove', moveHandler, { passive: true });
+    document.addEventListener('touchmove', moveHandler, { passive: false });
     
     // Start long press timer
     const timeout = setTimeout(() => {
-      // Only start drag if finger hasn't moved much (not scrolling)
-      if (!hasMoved) {
+      // Only start drag if not scrolling
+      if (!isScrolling) {
+        isDragActivated = true;
         setDraggedPlayer(player);
         setIsDragging(true);
         setDragPosition(initialPos);
@@ -422,109 +449,79 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           navigator.vibrate(50);
         }
       }
-      document.removeEventListener('touchmove', moveHandler);
-    }, 400); // 400ms long press (slightly shorter for better UX)
+    }, 300); // Reduced to 300ms for better responsiveness
     
     setTouchTimeout(timeout);
     
     // Clean up on touch end
-    const endHandler = () => {
+    const endHandler = async (endEvent: TouchEvent) => {
       clearTimeout(timeout);
       document.removeEventListener('touchmove', moveHandler);
       document.removeEventListener('touchend', endHandler);
+      
+      // Handle drop if drag was active
+      if (isDragActivated && !isScrolling) {
+        const touch = endEvent.changedTouches[0];
+        
+        // Find element under finger
+        const draggedElement = document.getElementById('dragged-player-clone');
+        if (draggedElement) {
+          draggedElement.style.display = 'none';
+        }
+        
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        const playerRow = element?.closest('tr[data-player-id]');
+        
+        if (playerRow) {
+          const targetPlayerId = playerRow.getAttribute('data-player-id');
+          if (targetPlayerId && targetPlayerId !== player.id) {
+            const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
+            if (targetPlayer) {
+              // Swap players
+              try {
+                await updateOffensivePlayerMutation.mutateAsync({
+                  playerId: player.id,
+                  data: { isBench: targetPlayer.isBench }
+                });
+                await updateOffensivePlayerMutation.mutateAsync({
+                  playerId: targetPlayer.id,
+                  data: { isBench: player.isBench }
+                });
+              } catch (error) {
+                console.error('Error swapping players:', error);
+              }
+            }
+          }
+        }
+      }
+      
+      // Reset state
+      setIsDragging(false);
+      setDraggedPlayer(null);
+      setDragOverPlayer(null);
+      setDragPosition(null);
+      setDraggedRowHTML('');
+      setTouchTimeout(null);
     };
+    
     document.addEventListener('touchend', endHandler, { once: true });
+    document.addEventListener('touchcancel', endHandler, { once: true }); // Handle touch cancel
   };
 
   const handlePlayerTouchMove = (e: React.TouchEvent) => {
+    // Touch move is now handled in the touchstart event listener
+    // This function can be simplified or removed
     if (!isDragging || !draggedPlayer) return;
-    
-    e.preventDefault(); // Prevent scrolling while dragging
-    const touch = e.touches[0];
-    
-    // Update drag position to follow finger
-    setDragPosition({ x: touch.clientX, y: touch.clientY });
-    
-    // Find element under finger (need to temporarily hide dragged element)
-    const draggedElement = document.getElementById('dragged-player-clone');
-    if (draggedElement) {
-      draggedElement.style.pointerEvents = 'none';
-    }
-    
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    const playerRow = element?.closest('tr[data-player-id]');
-    
-    if (playerRow) {
-      const playerId = playerRow.getAttribute('data-player-id');
-      if (playerId && playerId !== draggedPlayer.id) {
-        setDragOverPlayer(playerId);
-      }
-    } else {
-      setDragOverPlayer(null);
-    }
+    e.preventDefault();
   };
 
   const handlePlayerTouchEnd = async (e: React.TouchEvent) => {
-    // Clear the long press timer
+    // Touch end is now handled in the touchstart event listener
+    // This function can be simplified
     if (touchTimeout) {
       clearTimeout(touchTimeout);
       setTouchTimeout(null);
     }
-    
-    if (!isDragging || !draggedPlayer) {
-      setDragPosition(null);
-      setDraggedRowHTML('');
-      return;
-    }
-    
-    const touch = e.changedTouches[0];
-    
-    // Find element under finger
-    const draggedElement = document.getElementById('dragged-player-clone');
-    if (draggedElement) {
-      draggedElement.style.display = 'none';
-    }
-    
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    const playerRow = element?.closest('tr[data-player-id]');
-    
-    if (playerRow) {
-      const targetPlayerId = playerRow.getAttribute('data-player-id');
-      if (targetPlayerId && targetPlayerId !== draggedPlayer.id) {
-        const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
-        if (targetPlayer) {
-          // Store the bench status before swapping
-          const draggedIsBench = draggedPlayer.isBench;
-          const targetIsBench = targetPlayer.isBench;
-          
-          // Swap the players
-          try {
-            await updateOffensivePlayerMutation.mutateAsync({
-              playerId: draggedPlayer.id,
-              data: { isBench: targetIsBench }
-            });
-            await updateOffensivePlayerMutation.mutateAsync({
-              playerId: targetPlayer.id,
-              data: { isBench: draggedIsBench }
-            });
-            
-            // Haptic feedback on successful swap
-            if ('vibrate' in navigator) {
-              navigator.vibrate(30);
-            }
-          } catch (error) {
-            console.error('Error swapping players:', error);
-          }
-        }
-      }
-    }
-    
-    // Reset drag state
-    setDraggedPlayer(null);
-    setDragOverPlayer(null);
-    setIsDragging(false);
-    setDragPosition(null);
-    setDraggedRowHTML('');
   };
 
   // Handler functions for Available Defenders and Current Point
