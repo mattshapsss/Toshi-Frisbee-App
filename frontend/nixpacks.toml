@@ -1,11 +1,15 @@
 [phases.setup]
 nixPkgs = ["nodejs_18", "npm-9_x"]
+workdir = "/app/frontend"
 
 [phases.install]
+workdir = "/app/frontend"
 cmds = ["npm ci"]
 
 [phases.build]
+workdir = "/app/frontend"
 cmds = ["npm run build"]
 
 [start]
+workdir = "/app/frontend"
 cmd = "npm run preview"
