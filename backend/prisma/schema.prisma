@@ -100,7 +100,7 @@ model Game {
   updatedAt      DateTime       @updatedAt
   
   team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  createdBy      User           @relation(fields: [createdById], references: [id])
+  createdBy      User           @relation(fields: [createdById], references: [id], onDelete: Cascade)
   offensivePlayers OffensivePlayer[]
   points         Point[]
   sessions       GameSession[]

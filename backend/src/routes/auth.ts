@@ -361,34 +361,48 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res, next)
     
     // Use transaction to ensure all deletions happen or none
     await prisma.$transaction(async (tx) => {
-      // 1. Delete games created by user (this will cascade to points, matchups, etc.)
-      await tx.game.deleteMany({
-        where: { createdById: userId }
-      });
-      
-      // 2. Find teams where user is the only member
-      const userTeams = await tx.teamMember.findMany({
+      // 1. First, get all team memberships for this user
+      const userMemberships = await tx.teamMember.findMany({
         where: { userId },
-        include: {
-          team: {
-            include: {
-              members: true
-            }
-          }
+        select: { 
+          teamId: true,
+          role: true 
         }
       });
       
-      // Delete teams where user is the only member
-      for (const membership of userTeams) {
-        if (membership.team.members.length === 1) {
-          // Delete the team (this will cascade to defenders, games, etc.)
+      const teamIds = userMemberships.map(m => m.teamId);
+      
+      // 2. For each team, check if user is the only member
+      for (const teamId of teamIds) {
+        const memberCount = await tx.teamMember.count({
+          where: { teamId }
+        });
+        
+        if (memberCount === 1) {
+          // User is the only member, delete the entire team
           await tx.team.delete({
-            where: { id: membership.teamId }
+            where: { id: teamId }
+          });
+        } else {
+          // Other members exist, just remove this user's membership
+          await tx.teamMember.delete({
+            where: {
+              userId_teamId: {
+                userId,
+                teamId
+              }
+            }
           });
         }
       }
       
-      // 3. Finally delete the user (cascades will handle TeamMember, GameSession, Activity)
+      // 3. Delete all games created by this user
+      await tx.game.deleteMany({
+        where: { createdById: userId }
+      });
+      
+      // 4. Finally delete the user
+      // This will cascade delete: GameSession, Activity, and any remaining TeamMember entries
       await tx.user.delete({
         where: { id: userId }
       });
