@@ -159,7 +159,12 @@ export default function HomePage() {
       <div className="bg-gray-800 text-white">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo-white.png" 
+                alt="Ultimate D-Line Manager" 
+                className="h-8 w-8 object-contain"
+              />
               <h1 className="text-xl sm:text-2xl font-semibold">
                 {currentTeam ? `Team: ${currentTeam.name}` : 'Ultimate D-Line Manager'}
               </h1>

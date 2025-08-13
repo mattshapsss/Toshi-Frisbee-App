@@ -31,25 +31,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          {/* Logo and Header */}
-          <div className="text-center space-y-4">
-            <img 
-              src="/logo.png" 
-              alt="Ultimate D-Line Manager" 
-              className="h-24 w-24 mx-auto rounded-lg shadow-md"
-            />
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900">
-                Welcome Back
-              </h2>
-              <p className="mt-2 text-sm text-gray-600">
-                Sign in to Ultimate D-Line Manager
-              </p>
-            </div>
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
+      <div className="max-w-md w-full space-y-8">
+        {/* Logo and Header */}
+        <div className="text-center space-y-6">
+          <img 
+            src="/logo.png" 
+            alt="Ultimate D-Line Manager" 
+            className="h-32 w-32 mx-auto"
+          />
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">
+              Welcome Back
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Sign in to Ultimate D-Line Manager
+            </p>
           </div>
+        </div>
           
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
@@ -125,7 +124,6 @@ export default function LoginPage() {
               </p>
             </div>
           </form>
-        </div>
       </div>
     </div>
   );
