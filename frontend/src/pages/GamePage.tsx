@@ -464,16 +464,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       
       // Insert at the target position
       if (newTargetIndex !== -1) {
-        // If dropping on last item in section, insert after it
-        const isLastInSection = targetPlayer.isBench 
-          ? newTargetIndex === newPlayers.length - 1 || !newPlayers[newTargetIndex + 1]?.isBench
-          : newTargetIndex + 1 >= newPlayers.length || newPlayers[newTargetIndex + 1]?.isBench;
-        
-        if (isLastInSection && draggedIndex > targetIndex) {
-          // Insert after target
+        // Determine if we should insert before or after target
+        // If dragging from higher index to lower, insert before
+        // If dragging from lower index to higher, insert after
+        if (draggedIndex < targetIndex) {
+          // Dragging down - insert after target
           newPlayers.splice(newTargetIndex + 1, 0, draggedItem);
         } else {
-          // Insert before target
+          // Dragging up - insert before target
           newPlayers.splice(newTargetIndex, 0, draggedItem);
         }
       } else {
