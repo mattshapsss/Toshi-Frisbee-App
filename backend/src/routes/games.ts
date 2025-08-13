@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../server';
+import { prisma, io } from '../server';
 import { AuthRequest } from '../middleware/auth';
 import { generateGameSlug, generateShareCode, logActivity, validateGameAccess } from '../lib/utils';
 
@@ -334,6 +334,13 @@ router.post('/:gameId/offensive-players', async (req: AuthRequest, res, next) =>
       `Added offensive player: ${player.name}`
     );
     
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('player-added', {
+      player,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     res.status(201).json(player);
   } catch (error) {
     next(error);
@@ -363,6 +370,13 @@ router.put('/:gameId/offensive-players/:playerId', async (req: AuthRequest, res,
         ...(data.isBench !== undefined && { isBench: data.isBench }),
         ...(data.order !== undefined && { order: data.order }),
       },
+    });
+    
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('player-updated', {
+      player,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
     });
     
     res.json(player);
@@ -400,6 +414,13 @@ router.delete('/:gameId/offensive-players/:playerId', async (req: AuthRequest, r
       'PLAYER_REMOVED',
       `Removed offensive player: ${player.name}`
     );
+    
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('player-removed', {
+      playerId: req.params.playerId,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
     
     res.status(204).send();
   } catch (error) {
@@ -468,6 +489,14 @@ router.post('/:gameId/offensive-players/:playerId/available-defenders', async (r
       },
     });
     
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('available-defender-added', {
+      playerId: req.params.playerId,
+      defenderId: data.defenderId,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     res.status(201).json(availableDefender);
   } catch (error) {
     next(error);
@@ -490,6 +519,14 @@ router.delete('/:gameId/offensive-players/:playerId/available-defenders/:defende
           defenderId: req.params.defenderId,
         },
       },
+    });
+    
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('available-defender-removed', {
+      playerId: req.params.playerId,
+      defenderId: req.params.defenderId,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
     });
     
     res.status(204).send();
@@ -530,8 +567,24 @@ router.put('/:gameId/offensive-players/:playerId/current-point-defender', async 
         },
       });
       
+      // Emit socket event for real-time updates
+      io.to(`game:${req.params.gameId}`).emit('current-point-defender-updated', {
+        playerId: req.params.playerId,
+        defenderId: data.defenderId,
+        userId: req.user!.id,
+        timestamp: new Date().toISOString(),
+      });
+      
       res.json(currentPointDefender);
     } else {
+      // Emit socket event for clearing current point defender
+      io.to(`game:${req.params.gameId}`).emit('current-point-defender-updated', {
+        playerId: req.params.playerId,
+        defenderId: null,
+        userId: req.user!.id,
+        timestamp: new Date().toISOString(),
+      });
+      
       res.status(204).send();
     }
   } catch (error) {
@@ -559,6 +612,12 @@ router.delete('/:gameId/current-point-defenders', async (req: AuthRequest, res, 
     // Delete all current point defenders for these players
     await prisma.currentPointDefender.deleteMany({
       where: { offensivePlayerId: { in: playerIds } },
+    });
+    
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('current-point-cleared', {
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
     });
     
     res.status(204).send();

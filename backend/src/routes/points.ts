@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../server';
+import { prisma, io } from '../server';
 import { AuthRequest } from '../middleware/auth';
 import { validateGameAccess, logActivity } from '../lib/utils';
 
@@ -142,6 +142,13 @@ router.post('/', async (req: AuthRequest, res, next) => {
       `Added point #${pointNumber} (${data.gotBreak ? 'Break' : 'No Break'})`
     );
     
+    // Emit socket event for real-time updates
+    io.to(`game:${data.gameId}`).emit('point-created', {
+      point,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     res.status(201).json(point);
   } catch (error) {
     next(error);
@@ -217,6 +224,13 @@ router.put('/:pointId', async (req: AuthRequest, res, next) => {
       `Edited point #${existingPoint.pointNumber}`
     );
     
+    // Emit socket event for real-time updates
+    io.to(`game:${existingPoint.gameId}`).emit('point-updated', {
+      point,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     res.json(point);
   } catch (error) {
     next(error);
@@ -290,6 +304,14 @@ router.delete('/:pointId', async (req: AuthRequest, res, next) => {
       'POINT_DELETED',
       `Deleted point #${point.pointNumber}`
     );
+    
+    // Emit socket event for real-time updates
+    io.to(`game:${point.gameId}`).emit('point-deleted', {
+      pointId: req.params.pointId,
+      pointNumber: point.pointNumber,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
     
     res.status(204).send();
   } catch (error) {
@@ -384,6 +406,14 @@ router.put('/:pointId/matchups/:matchupId', async (req: AuthRequest, res, next) 
       'MATCHUP_CHANGED',
       `Updated matchup in point #${matchup.point.pointNumber}`
     );
+    
+    // Emit socket event for real-time updates
+    io.to(`game:${matchup.point.gameId}`).emit('matchup-updated', {
+      matchup: updated,
+      pointId: req.params.pointId,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
     
     res.json(updated);
   } catch (error) {

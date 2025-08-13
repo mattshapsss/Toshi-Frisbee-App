@@ -14,7 +14,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const { gameId, shareCode } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   
   const [currentPoint, setCurrentPoint] = useState<any[]>([]);
   const [expandedPoints, setExpandedPoints] = useState<string[]>([]);
@@ -137,52 +137,83 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     if (game?.id && isAuthenticated) {
       socketManager.joinGame(game.id);
 
+      const handleGameUpdate = (data: any) => {
+        console.log('Game update received:', data);
+        queryClient.invalidateQueries({ queryKey: ['game', game.id] });
+      };
+
       const handlePointUpdate = (data: any) => {
+        console.log('Point update received:', data);
         queryClient.invalidateQueries({ queryKey: ['game'] });
       };
 
       const handleMatchupUpdate = (data: any) => {
+        console.log('Matchup update received:', data);
         queryClient.invalidateQueries({ queryKey: ['game'] });
       };
 
       const handleAvailableDefenderAdded = (data: any) => {
+        console.log('Available defender added:', data);
         queryClient.invalidateQueries({ queryKey: ['game'] });
       };
 
       const handleAvailableDefenderRemoved = (data: any) => {
+        console.log('Available defender removed:', data);
         queryClient.invalidateQueries({ queryKey: ['game'] });
       };
 
       const handleCurrentPointDefenderUpdated = (data: any) => {
+        console.log('Current point defender updated:', data);
         queryClient.invalidateQueries({ queryKey: ['game'] });
-        setUnsavedChanges(true);
+        if (data.playerId !== user?.id) {
+          setUnsavedChanges(true);
+        }
       };
 
       const handleCurrentPointCleared = (data: any) => {
+        console.log('Current point cleared:', data);
         queryClient.invalidateQueries({ queryKey: ['game'] });
         setUnsavedChanges(false);
         setPointStartTime(null);
         setElapsedTime(0);
       };
 
+      const handleOffensivePlayerUpdate = (data: any) => {
+        console.log('Offensive player update received:', data);
+        queryClient.invalidateQueries({ queryKey: ['game'] });
+      };
+
+      // Register all event handlers
+      socketManager.on('game-updated', handleGameUpdate);
+      socketManager.on('point-created', handlePointUpdate);
       socketManager.on('point-updated', handlePointUpdate);
+      socketManager.on('point-deleted', handlePointUpdate);
       socketManager.on('matchup-updated', handleMatchupUpdate);
       socketManager.on('available-defender-added', handleAvailableDefenderAdded);
       socketManager.on('available-defender-removed', handleAvailableDefenderRemoved);
       socketManager.on('current-point-defender-updated', handleCurrentPointDefenderUpdated);
       socketManager.on('current-point-cleared', handleCurrentPointCleared);
+      socketManager.on('player-added', handleOffensivePlayerUpdate);
+      socketManager.on('player-updated', handleOffensivePlayerUpdate);
+      socketManager.on('player-removed', handleOffensivePlayerUpdate);
 
       return () => {
+        socketManager.off('game-updated', handleGameUpdate);
+        socketManager.off('point-created', handlePointUpdate);
         socketManager.off('point-updated', handlePointUpdate);
+        socketManager.off('point-deleted', handlePointUpdate);
         socketManager.off('matchup-updated', handleMatchupUpdate);
         socketManager.off('available-defender-added', handleAvailableDefenderAdded);
         socketManager.off('available-defender-removed', handleAvailableDefenderRemoved);
         socketManager.off('current-point-defender-updated', handleCurrentPointDefenderUpdated);
         socketManager.off('current-point-cleared', handleCurrentPointCleared);
+        socketManager.off('player-added', handleOffensivePlayerUpdate);
+        socketManager.off('player-updated', handleOffensivePlayerUpdate);
+        socketManager.off('player-removed', handleOffensivePlayerUpdate);
         socketManager.leaveGame();
       };
     }
-  }, [game?.id, isAuthenticated]);
+  }, [game?.id, isAuthenticated, queryClient]);
 
   const addOffender = () => {
     if (newOffenderName.trim() && game) {
