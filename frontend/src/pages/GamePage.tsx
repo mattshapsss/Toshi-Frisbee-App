@@ -388,29 +388,57 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handlePlayerTouchStart = (e: React.TouchEvent, player: any) => {
     const touch = e.touches[0];
     const initialPos = { x: touch.clientX, y: touch.clientY };
-    let isScrolling = false;
-    let isDragActivated = false;
     
     // Store the row HTML for visual feedback
     const row = e.currentTarget as HTMLTableRowElement;
     const clonedRow = row.cloneNode(true) as HTMLElement;
     clonedRow.style.width = `${row.offsetWidth}px`;
-    setDraggedRowHTML(clonedRow.outerHTML);
+    
+    // Store initial touch info in refs to avoid closure issues
+    const touchInfo = {
+      isScrolling: false,
+      isDragActivated: false,
+      initialX: touch.clientX,
+      initialY: touch.clientY,
+      player: player,
+      rowHTML: clonedRow.outerHTML
+    };
+    
+    // Start long press timer
+    const timeout = setTimeout(() => {
+      // Only start drag if not scrolling
+      if (!touchInfo.isScrolling) {
+        touchInfo.isDragActivated = true;
+        setDraggedPlayer(player);
+        setDraggedRowHTML(clonedRow.outerHTML);
+        setIsDragging(true);
+        setDragPosition({ x: touchInfo.initialX, y: touchInfo.initialY });
+        // Add haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+      }
+    }, 300); // Reduced to 300ms for better responsiveness
     
     // Movement tracking to detect scroll vs drag intent
     const moveHandler = (moveEvent: TouchEvent) => {
       const moveTouch = moveEvent.touches[0];
-      const deltaX = Math.abs(moveTouch.clientX - initialPos.x);
-      const deltaY = Math.abs(moveTouch.clientY - initialPos.y);
+      const deltaX = Math.abs(moveTouch.clientX - touchInfo.initialX);
+      const deltaY = Math.abs(moveTouch.clientY - touchInfo.initialY);
       
       // If vertical movement is greater, it's likely a scroll
-      if (!isDragActivated && deltaY > deltaX && deltaY > 5) {
-        isScrolling = true;
+      if (!touchInfo.isDragActivated && deltaY > deltaX && deltaY > 5) {
+        touchInfo.isScrolling = true;
         clearTimeout(timeout);
+        // Clean up if scrolling
+        setIsDragging(false);
+        setDraggedPlayer(null);
+        setDragPosition(null);
+        setDraggedRowHTML('');
       }
       
       // Update position if drag is active
-      if (isDragActivated && !isScrolling) {
+      if (touchInfo.isDragActivated && !touchInfo.isScrolling) {
         moveEvent.preventDefault(); // Prevent scrolling while dragging
         setDragPosition({ x: moveTouch.clientX, y: moveTouch.clientY });
         
@@ -425,7 +453,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         
         if (playerRow) {
           const playerId = playerRow.getAttribute('data-player-id');
-          if (playerId && playerId !== player.id) {
+          if (playerId && playerId !== touchInfo.player.id) {
             setDragOverPlayer(playerId);
           }
         } else {
@@ -434,61 +462,44 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       }
     };
     
-    document.addEventListener('touchmove', moveHandler, { passive: false });
-    
-    // Start long press timer
-    const timeout = setTimeout(() => {
-      // Only start drag if not scrolling
-      if (!isScrolling) {
-        isDragActivated = true;
-        setDraggedPlayer(player);
-        setIsDragging(true);
-        setDragPosition(initialPos);
-        // Add haptic feedback if available
-        if ('vibrate' in navigator) {
-          navigator.vibrate(50);
-        }
-      }
-    }, 300); // Reduced to 300ms for better responsiveness
-    
-    setTouchTimeout(timeout);
-    
     // Clean up on touch end
     const endHandler = async (endEvent: TouchEvent) => {
       clearTimeout(timeout);
       document.removeEventListener('touchmove', moveHandler);
       document.removeEventListener('touchend', endHandler);
+      document.removeEventListener('touchcancel', endHandler);
       
       // Handle drop if drag was active
-      if (isDragActivated && !isScrolling) {
-        const touch = endEvent.changedTouches[0];
-        
-        // Find element under finger
-        const draggedElement = document.getElementById('dragged-player-clone');
-        if (draggedElement) {
-          draggedElement.style.display = 'none';
-        }
-        
-        const element = document.elementFromPoint(touch.clientX, touch.clientY);
-        const playerRow = element?.closest('tr[data-player-id]');
-        
-        if (playerRow) {
-          const targetPlayerId = playerRow.getAttribute('data-player-id');
-          if (targetPlayerId && targetPlayerId !== player.id) {
-            const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
-            if (targetPlayer) {
-              // Swap players
-              try {
-                await updateOffensivePlayerMutation.mutateAsync({
-                  playerId: player.id,
-                  data: { isBench: targetPlayer.isBench }
-                });
-                await updateOffensivePlayerMutation.mutateAsync({
-                  playerId: targetPlayer.id,
-                  data: { isBench: player.isBench }
-                });
-              } catch (error) {
-                console.error('Error swapping players:', error);
+      if (touchInfo.isDragActivated && !touchInfo.isScrolling) {
+        const touch = endEvent.changedTouches?.[0] || endEvent.touches?.[0];
+        if (touch) {
+          // Find element under finger
+          const draggedElement = document.getElementById('dragged-player-clone');
+          if (draggedElement) {
+            draggedElement.style.display = 'none';
+          }
+          
+          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+          const playerRow = element?.closest('tr[data-player-id]');
+          
+          if (playerRow) {
+            const targetPlayerId = playerRow.getAttribute('data-player-id');
+            if (targetPlayerId && targetPlayerId !== touchInfo.player.id) {
+              const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
+              if (targetPlayer) {
+                // Swap players
+                try {
+                  await updateOffensivePlayerMutation.mutateAsync({
+                    playerId: touchInfo.player.id,
+                    data: { isBench: targetPlayer.isBench }
+                  });
+                  await updateOffensivePlayerMutation.mutateAsync({
+                    playerId: targetPlayer.id,
+                    data: { isBench: touchInfo.player.isBench }
+                  });
+                } catch (error) {
+                  console.error('Error swapping players:', error);
+                }
               }
             }
           }
@@ -504,8 +515,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       setTouchTimeout(null);
     };
     
-    document.addEventListener('touchend', endHandler, { once: true });
-    document.addEventListener('touchcancel', endHandler, { once: true }); // Handle touch cancel
+    // Attach event listeners
+    document.addEventListener('touchmove', moveHandler, { passive: false });
+    document.addEventListener('touchend', endHandler);
+    document.addEventListener('touchcancel', endHandler);
+    
+    setTouchTimeout(timeout);
   };
 
   const handlePlayerTouchMove = (e: React.TouchEvent) => {
