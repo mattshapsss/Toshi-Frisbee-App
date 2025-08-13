@@ -24,6 +24,9 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const [draggedDefender, setDraggedDefender] = useState<any | null>(null);
   const [dragOverPlayer, setDragOverPlayer] = useState<string | null>(null);
   const [draggedPlayer, setDraggedPlayer] = useState<any | null>(null);
+  const [touchTimeout, setTouchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState<{x: number, y: number} | null>(null);
   const [pointStartTime, setPointStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -380,16 +383,89 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     setDragOverPlayer(null);
   };
 
-  // Touch event handlers for mobile
-  const handleTouchStart = (defender: any) => {
-    setDraggedDefender(defender);
+  // Touch event handlers for mobile player swapping
+  const handlePlayerTouchStart = (e: React.TouchEvent, player: any) => {
+    const touch = e.touches[0];
+    setDragStartPos({ x: touch.clientX, y: touch.clientY });
+    
+    // Start long press timer
+    const timeout = setTimeout(() => {
+      setDraggedPlayer(player);
+      setIsDragging(true);
+      // Add haptic feedback if available
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    }, 500); // 500ms long press
+    
+    setTouchTimeout(timeout);
   };
 
-  const handleTouchEnd = (playerId: string) => {
-    if (draggedDefender) {
-      addDefenderToCurrentPoint(playerId, draggedDefender.id);
+  const handlePlayerTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !draggedPlayer) return;
+    
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const playerRow = element?.closest('tr[data-player-id]');
+    
+    if (playerRow) {
+      const playerId = playerRow.getAttribute('data-player-id');
+      if (playerId && playerId !== draggedPlayer.id) {
+        setDragOverPlayer(playerId);
+      }
+    } else {
+      setDragOverPlayer(null);
     }
-    setDraggedDefender(null);
+  };
+
+  const handlePlayerTouchEnd = async (e: React.TouchEvent) => {
+    // Clear the long press timer
+    if (touchTimeout) {
+      clearTimeout(touchTimeout);
+      setTouchTimeout(null);
+    }
+    
+    if (!isDragging || !draggedPlayer) {
+      setDragStartPos(null);
+      return;
+    }
+    
+    const touch = e.changedTouches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const playerRow = element?.closest('tr[data-player-id]');
+    
+    if (playerRow) {
+      const targetPlayerId = playerRow.getAttribute('data-player-id');
+      if (targetPlayerId && targetPlayerId !== draggedPlayer.id) {
+        const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
+        if (targetPlayer) {
+          // Swap the players
+          try {
+            await updateOffensivePlayerMutation.mutateAsync({
+              playerId: draggedPlayer.id,
+              data: { isBench: targetPlayer.isBench }
+            });
+            await updateOffensivePlayerMutation.mutateAsync({
+              playerId: targetPlayer.id,
+              data: { isBench: draggedPlayer.isBench }
+            });
+            
+            // Haptic feedback on successful swap
+            if ('vibrate' in navigator) {
+              navigator.vibrate(30);
+            }
+          } catch (error) {
+            console.error('Error swapping players:', error);
+          }
+        }
+      }
+    }
+    
+    // Reset drag state
+    setDraggedPlayer(null);
+    setDragOverPlayer(null);
+    setIsDragging(false);
+    setDragStartPos(null);
   };
 
   // Handler functions for Available Defenders and Current Point
@@ -588,6 +664,23 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Floating dragged player indicator for mobile */}
+      {isDragging && draggedPlayer && (
+        <div
+          className="fixed z-50 pointer-events-none bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg opacity-90"
+          style={{
+            left: dragStartPos?.x || 0,
+            top: (dragStartPos?.y || 0) - 50,
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <div className="flex items-center space-x-2">
+            <span className="font-medium">{draggedPlayer.name}</span>
+            <span className="text-xs opacity-75">{draggedPlayer.isBench ? 'Bench' : 'Active'}</span>
+          </div>
+        </div>
+      )}
+      
       <div className="bg-gray-800 text-white">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
@@ -755,9 +848,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                   const currentDefender = currentPoint.find(cp => cp.offensivePlayerId === player.id);
                   return (
                     <tr 
-                      key={player.id} 
+                      key={player.id}
+                      data-player-id={player.id}
                       className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
                         dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+                      } ${
+                        isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                       }`}
                       draggable={!isPublic}
                       onDragStart={(e) => handlePlayerDragStart(e, player)}
@@ -771,6 +867,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       }}
                       onDragLeave={(e) => {
                         if (e.currentTarget === e.target) setDragOverPlayer(null);
+                      }}
+                      onTouchStart={(e) => !isPublic && handlePlayerTouchStart(e, player)}
+                      onTouchMove={(e) => !isPublic && handlePlayerTouchMove(e)}
+                      onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
+                      style={{
+                        touchAction: !isPublic ? 'none' : 'auto',
+                        userSelect: isDragging ? 'none' : 'auto',
+                        WebkitUserSelect: isDragging ? 'none' : 'auto'
                       }}
                     >
                       <td className="px-2 sm:px-4 py-3">
@@ -955,9 +1059,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 {/* Bench players */}
                 {game.offensivePlayers?.filter((p: any) => p.isBench).map((player: any, index: number) => (
                   <tr 
-                    key={player.id} 
+                    key={player.id}
+                    data-player-id={player.id} 
                     className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
                       dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+                    } ${
+                      isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                     }`}
                     draggable={!isPublic}
                     onDragStart={(e) => handlePlayerDragStart(e, player)}
@@ -971,6 +1078,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     }}
                     onDragLeave={(e) => {
                       if (e.currentTarget === e.target) setDragOverPlayer(null);
+                    }}
+                    onTouchStart={(e) => !isPublic && handlePlayerTouchStart(e, player)}
+                    onTouchMove={(e) => !isPublic && handlePlayerTouchMove(e)}
+                    onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
+                    style={{
+                      touchAction: !isPublic ? 'none' : 'auto',
+                      userSelect: isDragging ? 'none' : 'auto',
+                      WebkitUserSelect: isDragging ? 'none' : 'auto'
                     }}
                   >
                     <td className="px-2 sm:px-4 py-3">
