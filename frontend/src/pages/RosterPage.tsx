@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Minus, ArrowLeft, Users, BarChart3 } from 'lucide-react';
@@ -12,6 +12,12 @@ export default function RosterPage() {
   const [newDefenderNumber, setNewDefenderNumber] = useState('');
   const [bulkAdd, setBulkAdd] = useState(false);
   const [bulkNames, setBulkNames] = useState('');
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure component is mounted on client side
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch team
   const { data: team } = useQuery({
@@ -248,17 +254,26 @@ export default function RosterPage() {
                           </span>
                         </td>
                         <td className="px-3 py-3 text-center">
-                          <button
-                            onClick={() => {
-                              if (confirm(`Delete ${defender.name} from roster?`)) {
-                                deleteDefenderMutation.mutate(defender.id);
-                              }
-                            }}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                            title="Delete defender"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
+                          {isMounted ? (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (confirm(`Delete ${defender.name} from roster?`)) {
+                                  deleteDefenderMutation.mutate(defender.id);
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                              title="Delete defender"
+                              type="button"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <div className="p-2">
+                              <Minus className="h-4 w-4 text-gray-400" />
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
