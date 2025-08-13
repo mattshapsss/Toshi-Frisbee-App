@@ -428,7 +428,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
   };
 
-  const handlePlayerDrop = (e: React.DragEvent, targetPlayer: any) => {
+  const handlePlayerDrop = async (e: React.DragEvent, targetPlayer: any) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -446,26 +446,42 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     if (draggedIndex !== -1 && targetIndex !== -1) {
       const newPlayers = [...players];
       
-      // If dragging to a different section, update bench status
-      if (draggedPlayer.isBench !== targetPlayer.isBench) {
-        newPlayers[draggedIndex] = { ...newPlayers[draggedIndex], isBench: targetPlayer.isBench };
-      }
-      
       // Remove dragged player from its position
-      const [removed] = newPlayers.splice(draggedIndex, 1);
+      const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+      
+      // Update bench status if moving between sections
+      if (draggedPlayer.isBench !== targetPlayer.isBench) {
+        draggedItem.isBench = targetPlayer.isBench;
+        // Update bench status in backend
+        await updateOffensivePlayerMutation.mutateAsync({
+          playerId: draggedItem.id,
+          data: { isBench: targetPlayer.isBench }
+        });
+      }
       
       // Find the new target index after removal
       const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
       
       // Insert at the target position
       if (newTargetIndex !== -1) {
-        newPlayers.splice(newTargetIndex, 0, removed);
+        // If dropping on last item in section, insert after it
+        const isLastInSection = targetPlayer.isBench 
+          ? newTargetIndex === newPlayers.length - 1 || !newPlayers[newTargetIndex + 1]?.isBench
+          : newTargetIndex + 1 >= newPlayers.length || newPlayers[newTargetIndex + 1]?.isBench;
+        
+        if (isLastInSection && draggedIndex > targetIndex) {
+          // Insert after target
+          newPlayers.splice(newTargetIndex + 1, 0, draggedItem);
+        } else {
+          // Insert before target
+          newPlayers.splice(newTargetIndex, 0, draggedItem);
+        }
       } else {
-        newPlayers.push(removed);
+        newPlayers.push(draggedItem);
       }
       
-      // Call the reorder API
-      reorderOffensivePlayersMutation.mutate({
+      // Call the reorder API with all players to maintain order
+      await reorderOffensivePlayersMutation.mutateAsync({
         gameId: game.id,
         playerIds: newPlayers.map((p: any) => p.id)
       });
@@ -594,27 +610,56 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
               const targetPlayer = game.offensivePlayers?.find((p: any) => p.id === targetPlayerId);
               
               if (draggedPlayer && targetPlayer) {
-                // Only swap if they're in different sections (bench vs active)
-                if (draggedPlayer.isBench !== targetPlayer.isBench) {
-                  // Store original bench states
-                  const draggedPlayerOriginalBench = draggedPlayer.isBench;
-                  const targetPlayerOriginalBench = targetPlayer.isBench;
+                // Reorder players (same logic as desktop)
+                const players = game.offensivePlayers || [];
+                const draggedIndex = players.findIndex((p: any) => p.id === draggedPlayer.id);
+                const targetIndex = players.findIndex((p: any) => p.id === targetPlayer.id);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                  const newPlayers = [...players];
+                  
+                  // Remove dragged player from its position
+                  const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+                  
+                  // Update bench status if moving between sections
+                  if (draggedPlayer.isBench !== targetPlayer.isBench) {
+                    draggedItem.isBench = targetPlayer.isBench;
+                    // Update bench status in backend
+                    await updateOffensivePlayerMutation.mutateAsync({
+                      playerId: draggedItem.id,
+                      data: { isBench: targetPlayer.isBench }
+                    });
+                  }
+                  
+                  // Find the new target index after removal
+                  const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+                  
+                  // Insert at the target position
+                  if (newTargetIndex !== -1) {
+                    // If dropping on last item in section, insert after it
+                    const isLastInSection = targetPlayer.isBench 
+                      ? newTargetIndex === newPlayers.length - 1 || !newPlayers[newTargetIndex + 1]?.isBench
+                      : newTargetIndex + 1 >= newPlayers.length || newPlayers[newTargetIndex + 1]?.isBench;
+                    
+                    if (isLastInSection && draggedIndex > targetIndex) {
+                      // Insert after target
+                      newPlayers.splice(newTargetIndex + 1, 0, draggedItem);
+                    } else {
+                      // Insert before target
+                      newPlayers.splice(newTargetIndex, 0, draggedItem);
+                    }
+                  } else {
+                    newPlayers.push(draggedItem);
+                  }
                   
                   try {
-                    // Swap their bench status
-                    await updateOffensivePlayerMutation.mutateAsync({
-                      playerId: draggedPlayer.id,
-                      data: { isBench: targetPlayerOriginalBench }
+                    // Call the reorder API with all players to maintain order
+                    await reorderOffensivePlayersMutation.mutateAsync({
+                      gameId: game.id,
+                      playerIds: newPlayers.map((p: any) => p.id)
                     });
-                    await updateOffensivePlayerMutation.mutateAsync({
-                      playerId: targetPlayer.id,
-                      data: { isBench: draggedPlayerOriginalBench }
-                    });
-                    
-                    // Invalidate query to refresh the UI
-                    await queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
                   } catch (error) {
-                    console.error('Error swapping players:', error);
+                    console.error('Error reordering players:', error);
                   }
                 }
               }
@@ -1243,19 +1288,47 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                   className={`${dragOverBench ? 'ring-2 ring-blue-400 bg-blue-100' : ''} transition-all`}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    if (draggedPlayer && !draggedPlayer.isBench) {
+                    if (draggedPlayer) {
                       setDragOverBench(true);
                     }
                   }}
                   onDragLeave={() => setDragOverBench(false)}
-                  onDrop={(e) => {
+                  onDrop={async (e) => {
                     e.preventDefault();
-                    if (draggedPlayer && !draggedPlayer.isBench) {
-                      // Move player to bench
-                      updateOffensivePlayerMutation.mutate({
-                        playerId: draggedPlayer.id,
-                        data: { isBench: true }
-                      });
+                    if (draggedPlayer) {
+                      const players = game.offensivePlayers || [];
+                      const newPlayers = [...players];
+                      const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
+                      
+                      if (draggedIndex !== -1) {
+                        // Remove from current position
+                        const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+                        
+                        // Update to bench status
+                        draggedItem.isBench = true;
+                        
+                        // Find where to insert in bench (at the beginning of bench section)
+                        const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
+                        if (firstBenchIndex !== -1) {
+                          // Insert at beginning of bench
+                          newPlayers.splice(firstBenchIndex, 0, draggedItem);
+                        } else {
+                          // No bench players, add at end
+                          newPlayers.push(draggedItem);
+                        }
+                        
+                        // Update bench status
+                        await updateOffensivePlayerMutation.mutateAsync({
+                          playerId: draggedItem.id,
+                          data: { isBench: true }
+                        });
+                        
+                        // Reorder all players
+                        await reorderOffensivePlayersMutation.mutateAsync({
+                          gameId: game.id,
+                          playerIds: newPlayers.map((p: any) => p.id)
+                        });
+                      }
                     }
                     setDragOverBench(false);
                     setDraggedPlayer(null);
