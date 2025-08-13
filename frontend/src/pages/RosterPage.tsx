@@ -53,6 +53,10 @@ export default function RosterPage() {
     mutationFn: defendersApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['defenders', teamId] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete defender:', error);
+      alert(error.response?.data?.error || 'Failed to delete defender. You may not have permission to delete.');
     }
   });
 
