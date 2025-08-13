@@ -599,9 +599,64 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           }
           
           const element = document.elementFromPoint(touch.clientX, touch.clientY);
-          const playerRow = element?.closest('tr[data-player-id]');
+          let playerRow = element?.closest('tr[data-player-id]');
+          const benchSeparator = element?.closest('tr[data-bench-separator]');
           
-          if (playerRow) {
+          // If we're between rows, find the nearest player row
+          if (!playerRow && !benchSeparator) {
+            // Get all player rows
+            const allRows = document.querySelectorAll('tr[data-player-id]');
+            let closestRow = null;
+            let closestDistance = Infinity;
+            
+            allRows.forEach((row) => {
+              const rect = row.getBoundingClientRect();
+              const distance = Math.abs(rect.top + rect.height / 2 - touch.clientY);
+              if (distance < closestDistance) {
+                closestDistance = distance;
+                closestRow = row;
+              }
+            });
+            
+            if (closestRow && closestDistance < 50) { // Within 50px of a row
+              playerRow = closestRow;
+            }
+          }
+          
+          // Handle drop on bench separator (for empty bench or moving to bench)
+          if (benchSeparator && touchInfo.player) {
+            const draggedPlayer = game.offensivePlayers?.find((p: any) => p.id === touchInfo.player.id);
+            if (draggedPlayer && !draggedPlayer.isBench) {
+              // Move to bench
+              const players = game.offensivePlayers || [];
+              const newPlayers = [...players];
+              const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
+              
+              if (draggedIndex !== -1) {
+                const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+                draggedItem.isBench = true;
+                
+                // Find first bench position or end of array
+                const firstBenchIndex = newPlayers.findIndex((p: any) => p.isBench);
+                if (firstBenchIndex !== -1) {
+                  newPlayers.splice(firstBenchIndex, 0, draggedItem);
+                } else {
+                  newPlayers.push(draggedItem);
+                }
+                
+                // Update in backend
+                await updateOffensivePlayerMutation.mutateAsync({
+                  playerId: draggedItem.id,
+                  data: { isBench: true }
+                });
+                
+                await reorderOffensivePlayersMutation.mutateAsync({
+                  gameId: game.id,
+                  playerIds: newPlayers.map((p: any) => p.id)
+                });
+              }
+            }
+          } else if (playerRow) {
             const targetPlayerId = playerRow.getAttribute('data-player-id');
             if (targetPlayerId && targetPlayerId !== touchInfo.player.id) {
               // Get fresh player data from game state
@@ -630,26 +685,15 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     });
                   }
                   
-                  // Find the new target index after removal
-                  const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
-                  
-                  // Insert at the target position
-                  if (newTargetIndex !== -1) {
-                    // If dropping on last item in section, insert after it
-                    const isLastInSection = targetPlayer.isBench 
-                      ? newTargetIndex === newPlayers.length - 1 || !newPlayers[newTargetIndex + 1]?.isBench
-                      : newTargetIndex + 1 >= newPlayers.length || newPlayers[newTargetIndex + 1]?.isBench;
-                    
-                    if (isLastInSection && draggedIndex > targetIndex) {
-                      // Insert after target
-                      newPlayers.splice(newTargetIndex + 1, 0, draggedItem);
-                    } else {
-                      // Insert before target
-                      newPlayers.splice(newTargetIndex, 0, draggedItem);
-                    }
-                  } else {
-                    newPlayers.push(draggedItem);
+                  // Calculate new index after removal (simpler logic)
+                  let insertIndex = targetIndex;
+                  if (draggedIndex < targetIndex) {
+                    // Item was removed before target, so target index shifted down
+                    insertIndex = targetIndex - 1;
                   }
+                  
+                  // Insert at new position (before the target)
+                  newPlayers.splice(insertIndex, 0, draggedItem);
                   
                   try {
                     // Call the reorder API with all players to maintain order
@@ -1283,6 +1327,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 
                 {/* Bench separator - always visible */}
                 <tr
+                  id="bench-separator"
+                  data-bench-separator="true"
                   className={`${dragOverBench ? 'ring-2 ring-blue-400 bg-blue-100' : ''} transition-all`}
                   onDragOver={(e) => {
                     e.preventDefault();
