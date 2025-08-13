@@ -1,18 +1,21 @@
-FROM node:20-alpine AS builder
+FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies including serve
 RUN npm ci
 
+# Copy source code
 COPY . .
+
+# Build the app
 RUN npm run build
 
-FROM nginx:alpine
+# Expose port (Railway will override this)
+EXPOSE 3000
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# Start with serve using Railway's PORT
+CMD ["sh", "-c", "npx serve -s dist -l $PORT"]
