@@ -1247,7 +1247,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                           </div>
                         ) : (
                           <span 
-                            className="font-medium text-sm leading-4 text-gray-900 cursor-pointer hover:text-blue-600"
+                            className="font-medium text-sm leading-3 block text-gray-900 cursor-pointer hover:text-blue-600"
                             onClick={() => !isPublic && handleEditPlayerName(player)}
                           >
                             {player.name}
@@ -1498,7 +1498,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     onTouchEnd={(e) => !isPublic && handlePlayerTouchEnd(e)}
                   >
                     <td className="px-2 sm:px-4 py-3">
-                      <span className="font-medium text-sm leading-4 text-gray-900">{player.name}</span>
+                      <span className="font-medium text-sm leading-3 block text-gray-900">{player.name}</span>
                     </td>
                     <td className="px-2 sm:px-4 py-3">
                       {!isPublic ? (
