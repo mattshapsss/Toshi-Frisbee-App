@@ -161,6 +161,7 @@ model Point {
   notes          String?
   windSpeed      Float?
   windDirection  String?
+  selectedDefenderIds String[]  @default([])
   startedAt      DateTime       @default(now())
   completedAt    DateTime?
   

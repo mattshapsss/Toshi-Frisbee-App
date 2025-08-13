@@ -1864,19 +1864,36 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     
                     {isExpanded && (
                       <div className="px-3 pb-3">
-                        <div className="space-y-2">
-                          {point.matchups?.map((matchup: any, idx: number) => (
-                            <div key={idx} className="text-sm bg-white rounded p-2 border flex items-center justify-between">
-                              <span className="font-medium text-gray-800">
-                                {matchup.offensivePlayer?.name || 'Unknown'}
-                              </span>
-                              <span className="text-gray-600">vs</span>
-                              <span className="font-medium text-gray-800">
-                                {matchup.defender?.name || 'Unassigned'}
-                              </span>
+                        {/* Display selected defenders */}
+                        {point.selectedDefenderIds && point.selectedDefenderIds.length > 0 && (
+                          <div className="mb-3 p-2 bg-gray-50 rounded">
+                            <div className="text-xs text-gray-600 mb-1">Defenders on field:</div>
+                            <div className="text-sm text-gray-800">
+                              {point.selectedDefenderIds.map((defenderId: string) => {
+                                const defender = defenders.find((d: any) => d.id === defenderId);
+                                return defender?.name || 'Unknown';
+                              }).join(', ')}
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        )}
+                        
+                        {/* Display matchups */}
+                        {point.matchups && point.matchups.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="text-xs text-gray-600 mb-1">Matchups:</div>
+                            {point.matchups.map((matchup: any, idx: number) => (
+                              <div key={idx} className="text-sm bg-white rounded p-2 border flex items-center justify-between">
+                                <span className="font-medium text-gray-800">
+                                  {matchup.offensivePlayer?.name || 'Unknown'}
+                                </span>
+                                <span className="text-gray-600">vs</span>
+                                <span className="font-medium text-gray-800">
+                                  {matchup.defender?.name || 'Unassigned'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

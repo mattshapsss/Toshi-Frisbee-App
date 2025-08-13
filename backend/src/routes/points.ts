@@ -104,6 +104,7 @@ router.post('/', async (req: AuthRequest, res, next) => {
         notes: data.notes,
         windSpeed: data.windSpeed,
         windDirection: data.windDirection,
+        selectedDefenderIds: data.selectedDefenderIds || [],
         matchups: {
           create: data.matchups.map(m => ({
             offensivePlayerId: m.offensivePlayerId,
