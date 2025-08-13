@@ -432,8 +432,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('handlePlayerDrop - draggedPlayer:', draggedPlayer?.name, 'targetPlayer:', targetPlayer?.name);
-    
     if (!draggedPlayer || draggedPlayer.id === targetPlayer.id) {
       setDraggedPlayer(null);
       setDragOverPlayer(null);
@@ -448,8 +446,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
     const targetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
     
-    console.log('Indices - dragged:', draggedIndex, 'target:', targetIndex);
-    
     if (draggedIndex === -1 || targetIndex === -1) {
       setDraggedPlayer(null);
       setDragOverPlayer(null);
@@ -462,7 +458,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     // Update bench status if moving between sections
     if (draggedPlayer.isBench !== targetPlayer.isBench) {
-      console.log('Moving between sections - updating bench status');
       draggedItem.isBench = targetPlayer.isBench;
       // Update bench status in backend
       await updateOffensivePlayerMutation.mutateAsync({
@@ -478,12 +473,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       insertIndex = targetIndex - 1;
     }
     
-    console.log('Insert index:', insertIndex);
-    
     // Insert at new position (before the target)
     newPlayers.splice(insertIndex, 0, draggedItem);
-    
-    console.log('New player order:', newPlayers.map((p: any) => p.name));
     
     // Call the reorder API with all players to maintain order
     await reorderOffensivePlayersMutation.mutateAsync({

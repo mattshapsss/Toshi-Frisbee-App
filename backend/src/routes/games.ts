@@ -347,6 +347,42 @@ router.post('/:gameId/offensive-players', async (req: AuthRequest, res, next) =>
   }
 });
 
+// Reorder offensive players (must be before /:playerId to match correctly)
+router.put('/:gameId/offensive-players/reorder', async (req: AuthRequest, res, next) => {
+  try {
+    const schema = z.object({
+      playerIds: z.array(z.string()),
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Check access
+    const hasAccess = await validateGameAccess(req.params.gameId, req.user!.id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Update order for each player
+    const updates = data.playerIds.map((id, index) => 
+      prisma.offensivePlayer.update({
+        where: { id },
+        data: { order: index },
+      })
+    );
+    
+    await prisma.$transaction(updates);
+    
+    const players = await prisma.offensivePlayer.findMany({
+      where: { gameId: req.params.gameId },
+      orderBy: [{ isBench: 'asc' }, { order: 'asc' }],
+    });
+    
+    res.json(players);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update offensive player
 router.put('/:gameId/offensive-players/:playerId', async (req: AuthRequest, res, next) => {
   try {
@@ -423,42 +459,6 @@ router.delete('/:gameId/offensive-players/:playerId', async (req: AuthRequest, r
     });
     
     res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Reorder offensive players
-router.put('/:gameId/offensive-players/reorder', async (req: AuthRequest, res, next) => {
-  try {
-    const schema = z.object({
-      playerIds: z.array(z.string()),
-    });
-    
-    const data = schema.parse(req.body);
-    
-    // Check access
-    const hasAccess = await validateGameAccess(req.params.gameId, req.user!.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    
-    // Update order for each player
-    const updates = data.playerIds.map((id, index) => 
-      prisma.offensivePlayer.update({
-        where: { id },
-        data: { order: index },
-      })
-    );
-    
-    await prisma.$transaction(updates);
-    
-    const players = await prisma.offensivePlayer.findMany({
-      where: { gameId: req.params.gameId },
-      orderBy: [{ isBench: 'asc' }, { order: 'asc' }],
-    });
-    
-    res.json(players);
   } catch (error) {
     next(error);
   }
