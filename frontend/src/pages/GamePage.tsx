@@ -457,6 +457,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       return;
     }
     
+    // Check if this is the last active player and we're dropping from bench
+    const activePlayers = players.filter((p: any) => !p.isBench);
+    const isTargetLastActive = !targetPlayer.isBench && targetPlayer.id === activePlayers[activePlayers.length - 1]?.id;
+    const isDroppingFromBench = draggedPlayer.isBench;
+    
     // Remove the dragged item
     const [draggedItem] = newPlayers.splice(draggedIndex, 1);
     
@@ -477,7 +482,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       insertIndex = targetIndex - 1;
     }
     
-    // Insert at new position (before the target)
+    // If dropping from bench to last active position, insert after it (above bench)
+    if (isTargetLastActive && isDroppingFromBench) {
+      insertIndex = insertIndex + 1;
+    }
+    
+    // Insert at new position
     newPlayers.splice(insertIndex, 0, draggedItem);
     
     // Call the reorder API with all players to maintain order
@@ -658,6 +668,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
             }
           } else if (playerRow) {
             const targetPlayerId = playerRow.getAttribute('data-player-id');
+            const isLastActive = playerRow.getAttribute('data-last-active') === 'true';
+            
             if (targetPlayerId && targetPlayerId !== touchInfo.player.id) {
               // Get fresh player data from game state
               const draggedPlayer = game.offensivePlayers?.find((p: any) => p.id === touchInfo.player.id);
@@ -685,14 +697,19 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     });
                   }
                   
-                  // Calculate new index after removal (simpler logic)
+                  // Calculate new index after removal
                   let insertIndex = targetIndex;
                   if (draggedIndex < targetIndex) {
                     // Item was removed before target, so target index shifted down
                     insertIndex = targetIndex - 1;
                   }
                   
-                  // Insert at new position (before the target)
+                  // If dropping from bench to last active position, insert after it (above bench)
+                  if (isLastActive && draggedPlayer.isBench) {
+                    insertIndex = insertIndex + 1;
+                  }
+                  
+                  // Insert at new position
                   newPlayers.splice(insertIndex, 0, draggedItem);
                   
                   try {
@@ -1123,17 +1140,22 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {game.offensivePlayers?.filter((p: any) => !p.isBench).map((player: any, index: number) => {
+                {game.offensivePlayers?.filter((p: any) => !p.isBench).map((player: any, index: number, activeArray: any[]) => {
                   const currentDefender = currentPoint.find(cp => cp.offensivePlayerId === player.id);
+                  const isLastActive = index === activeArray.length - 1;
+                  const showBottomBorder = isLastActive && dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id && draggedPlayer.isBench;
+                  
                   return (
                     <tr 
                       key={player.id}
                       data-player-id={player.id}
+                      data-last-active={isLastActive}
                       className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${!isPublic ? 'cursor-move hover:bg-gray-100' : ''} transition-all ${
                         isDragging && draggedPlayer?.id === player.id ? 'opacity-50' : ''
                       }`}
                       style={{
-                        borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id ? '3px solid #3E8EDE' : undefined,
+                        borderTop: dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id && !showBottomBorder ? '3px solid #3E8EDE' : undefined,
+                        borderBottom: showBottomBorder ? '3px solid #3E8EDE' : undefined,
                         touchAction: isDragging ? 'none' : 'auto',
                         userSelect: isDragging ? 'none' : 'auto',
                         WebkitUserSelect: isDragging ? 'none' : 'auto'
