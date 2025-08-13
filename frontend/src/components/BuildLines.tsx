@@ -56,12 +56,12 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
 
   const handleCreateLine = () => {
     if (!newLineName.trim() || selectedDefenders.length === 0) {
-      alert('Please enter a line name and select at least one defender');
+      // Silently prevent creation without name or defenders
       return;
     }
 
     if (selectedDefenders.length > 7) {
-      alert('Maximum 7 defenders per line');
+      // Silently prevent more than 7 defenders
       return;
     }
 
@@ -80,12 +80,12 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
 
   const handleSaveEdit = () => {
     if (!editingLineName.trim() || editingLineDefenders.length === 0) {
-      alert('Please enter a line name and select at least one defender');
+      // Silently prevent saving without name or defenders
       return;
     }
 
     if (editingLineDefenders.length > 7) {
-      alert('Maximum 7 defenders per line');
+      // Silently prevent more than 7 defenders
       return;
     }
 
@@ -119,7 +119,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
       setters.set(setters.get.filter(id => id !== defenderId));
     } else {
       if (setters.get.length >= 7) {
-        alert('Maximum 7 defenders per line');
+        // Silently prevent more than 7 defenders
         return;
       }
       setters.set([...setters.get, defenderId]);

@@ -92,21 +92,10 @@ export default function CallYourLine({
     if (newSelection.includes(defenderId)) {
       // Remove defender
       newSelection = newSelection.filter(id => id !== defenderId);
-      
-      // Check if this defender is in any current point assignment
-      const isInCurrentPoint = offensivePlayers.some(
-        player => player.currentPointDefender?.defenderId === defenderId
-      );
-      
-      if (isInCurrentPoint) {
-        if (!confirm('This defender is currently assigned. Removing them will clear their assignment. Continue?')) {
-          return;
-        }
-      }
     } else {
       // Add defender
       if (newSelection.length >= 7) {
-        alert('Maximum 7 defenders can be selected for a point');
+        // Silently prevent adding more than 7
         return;
       }
       newSelection.push(defenderId);
@@ -121,21 +110,7 @@ export default function CallYourLine({
 
     const defenderIds = line.defenders.map((ld: any) => ld.defender.id);
     
-    // Check if any currently assigned defenders will be removed
-    const currentlyAssignedDefenders = offensivePlayers
-      .filter(player => player.currentPointDefender)
-      .map(player => player.currentPointDefender.defenderId);
-    
-    const defendersToRemove = currentlyAssignedDefenders.filter(
-      id => !defenderIds.includes(id)
-    );
-    
-    if (defendersToRemove.length > 0) {
-      if (!confirm(`Loading this line will remove ${defendersToRemove.length} currently assigned defender(s). Continue?`)) {
-        return;
-      }
-    }
-
+    // Just load the line without warnings
     setSelectedDefenders(defenderIds);
     updateSelectedDefendersMutation.mutate(defenderIds);
     setShowLineDropdown(false);
@@ -219,11 +194,6 @@ export default function CallYourLine({
           })}
         </div>
         
-        {selectedDefenders.length === 7 && (
-          <div className="mt-3 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md">
-            Maximum 7 defenders selected. Deselect a defender to add another.
-          </div>
-        )}
       </div>
     </div>
   );

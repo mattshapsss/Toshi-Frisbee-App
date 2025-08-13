@@ -276,7 +276,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
     // Check if any defenders are selected
     if (selectedDefenderIds.length === 0) {
-      alert('Please select defenders in "Call Your Line" first');
+      // Silently prevent saving without selected defenders
       return;
     }
 
@@ -845,7 +845,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     // Check if defender is selected in Call Your Line
     if (!selectedDefenderIds.includes(defenderId)) {
-      alert('This defender must be selected in "Call Your Line" before they can be assigned to current point');
+      // Silently prevent assignment if not selected
       return;
     }
     
