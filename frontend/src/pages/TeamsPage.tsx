@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Users, Settings, UserPlus, ArrowLeft, Trash2 } from 'lucide-react';
 import { teamsApi } from '../lib/api';
@@ -8,6 +8,7 @@ import { useTeamStore } from '../stores/teamStore';
 export default function TeamsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDescription, setNewTeamDescription] = useState('');
@@ -18,6 +19,16 @@ export default function TeamsPage() {
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+
+  // Check URL params on mount to open the right form
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create') {
+      setShowCreateTeam(true);
+    } else if (action === 'join') {
+      setShowJoinTeam(true);
+    }
+  }, [searchParams]);
 
   const { data: teams = [] } = useQuery({
     queryKey: ['teams'],

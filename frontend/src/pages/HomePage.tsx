@@ -178,7 +178,7 @@ export default function HomePage() {
             <p className="text-gray-600 mb-4">You need to join or create a team to start tracking games.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
-                onClick={() => navigate('/teams')}
+                onClick={() => navigate('/teams?action=join')}
                 className="flex flex-col items-center justify-center p-6 bg-green-50 border-2 border-green-200 rounded-lg hover:bg-green-100 transition-colors"
               >
                 <UserPlus className="h-10 w-10 text-green-600 mb-2" />
@@ -186,7 +186,7 @@ export default function HomePage() {
                 <span className="text-sm text-gray-600 mt-1">Have an invite code?</span>
               </button>
               <button
-                onClick={() => navigate('/teams')}
+                onClick={() => navigate('/teams?action=create')}
                 className="flex flex-col items-center justify-center p-6 bg-blue-50 border-2 border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
               >
                 <Plus className="h-10 w-10 text-blue-600 mb-2" />
@@ -263,7 +263,6 @@ export default function HomePage() {
             </div>
             {games.length === 0 ? (
               <div className="text-center py-12">
-                <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h4 className="text-lg font-medium text-gray-600 mb-2">No Games Yet</h4>
                 <p className="text-gray-500">Create your first game to start tracking defensive matchups.</p>
               </div>

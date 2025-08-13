@@ -86,6 +86,11 @@ export const authApi = {
     const response = await api.put('/auth/username', data);
     return response.data;
   },
+  
+  deleteAccount: async (data: { password: string; confirmation: string }) => {
+    const response = await api.delete('/auth/account', { data });
+    return response.data;
+  },
 };
 
 // Teams API

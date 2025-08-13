@@ -59,40 +59,43 @@ export default function SettingsPage() {
             Notifications
           </h2>
           <div className="space-y-4">
-            <label className="flex items-center justify-between">
+            <label className="flex items-center justify-between opacity-50 cursor-not-allowed">
               <div>
                 <div className="font-medium text-gray-900">Game Updates</div>
                 <div className="text-sm text-gray-500">Receive notifications when games are updated</div>
+                <div className="text-xs text-blue-600 mt-1">Coming soon in next update</div>
               </div>
               <input
                 type="checkbox"
                 checked={notifications.gameUpdates}
-                onChange={(e) => setNotifications({...notifications, gameUpdates: e.target.checked})}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                disabled
+                className="h-5 w-5 text-gray-400 rounded cursor-not-allowed"
               />
             </label>
-            <label className="flex items-center justify-between">
+            <label className="flex items-center justify-between opacity-50 cursor-not-allowed">
               <div>
                 <div className="font-medium text-gray-900">Team Invites</div>
                 <div className="text-sm text-gray-500">Get notified when invited to teams</div>
+                <div className="text-xs text-blue-600 mt-1">Coming soon in next update</div>
               </div>
               <input
                 type="checkbox"
                 checked={notifications.teamInvites}
-                onChange={(e) => setNotifications({...notifications, teamInvites: e.target.checked})}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                disabled
+                className="h-5 w-5 text-gray-400 rounded cursor-not-allowed"
               />
             </label>
-            <label className="flex items-center justify-between">
+            <label className="flex items-center justify-between opacity-50 cursor-not-allowed">
               <div>
                 <div className="font-medium text-gray-900">Weekly Reports</div>
                 <div className="text-sm text-gray-500">Receive weekly team performance summaries</div>
+                <div className="text-xs text-blue-600 mt-1">Coming soon in next update</div>
               </div>
               <input
                 type="checkbox"
                 checked={notifications.weeklyReports}
-                onChange={(e) => setNotifications({...notifications, weeklyReports: e.target.checked})}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                disabled
+                className="h-5 w-5 text-gray-400 rounded cursor-not-allowed"
               />
             </label>
           </div>
@@ -105,28 +108,30 @@ export default function SettingsPage() {
             Privacy
           </h2>
           <div className="space-y-4">
-            <label className="flex items-center justify-between">
+            <label className="flex items-center justify-between opacity-50 cursor-not-allowed">
               <div>
                 <div className="font-medium text-gray-900">Public Profile</div>
                 <div className="text-sm text-gray-500">Allow anyone to view your profile</div>
+                <div className="text-xs text-blue-600 mt-1">Coming soon in next update</div>
               </div>
               <input
                 type="checkbox"
                 checked={privacy.publicProfile}
-                onChange={(e) => setPrivacy({...privacy, publicProfile: e.target.checked})}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                disabled
+                className="h-5 w-5 text-gray-400 rounded cursor-not-allowed"
               />
             </label>
-            <label className="flex items-center justify-between">
+            <label className="flex items-center justify-between opacity-50 cursor-not-allowed">
               <div>
                 <div className="font-medium text-gray-900">Show Email</div>
                 <div className="text-sm text-gray-500">Display email to team members</div>
+                <div className="text-xs text-blue-600 mt-1">Coming soon in next update</div>
               </div>
               <input
                 type="checkbox"
                 checked={privacy.showEmail}
-                onChange={(e) => setPrivacy({...privacy, showEmail: e.target.checked})}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                disabled
+                className="h-5 w-5 text-gray-400 rounded cursor-not-allowed"
               />
             </label>
             <label className="flex items-center justify-between">
@@ -220,20 +225,11 @@ export default function SettingsPage() {
           </h2>
           <div className="space-y-3">
             <button
-              onClick={() => {
-                const settings = localStorage.getItem('appSettings');
-                if (settings) {
-                  const blob = new Blob([settings], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'dline-settings.json';
-                  a.click();
-                }
-              }}
-              className="w-full px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 text-sm font-medium"
+              disabled
+              className="w-full px-4 py-2 text-gray-400 bg-gray-50 rounded-lg cursor-not-allowed text-sm font-medium relative"
             >
               Export Settings
+              <span className="text-xs text-blue-600 block mt-1">Coming soon in next update</span>
             </button>
             <button
               onClick={() => {

@@ -272,4 +272,40 @@ router.put('/username', authenticateToken, async (req: AuthRequest, res, next) =
   }
 });
 
+// Delete account
+router.delete('/account', authenticateToken, async (req: AuthRequest, res, next) => {
+  try {
+    const schema = z.object({
+      password: z.string(),
+      confirmation: z.string().regex(/^DELETE$/),
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Verify password
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const isValidPassword = await bcrypt.compare(data.password, user.password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+    
+    // Delete user (cascades will handle related data)
+    await prisma.user.delete({
+      where: { id: req.user!.id },
+    });
+    
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
