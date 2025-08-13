@@ -13,6 +13,8 @@ import gameRoutes from './routes/games';
 import defenderRoutes from './routes/defenders';
 import pointRoutes from './routes/points';
 import exportRoutes from './routes/export';
+import lineRoutes from './routes/lines';
+import selectedDefenderRoutes from './routes/selectedDefenders';
 import { authenticateToken } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 import { setupSocketHandlers } from './sockets/gameSocket';
@@ -69,6 +71,8 @@ app.use('/api/teams', authenticateToken, teamRoutes);
 app.use('/api/games', authenticateToken, gameRoutes);
 app.use('/api/defenders', authenticateToken, defenderRoutes);
 app.use('/api/points', authenticateToken, pointRoutes);
+app.use('/api/lines', authenticateToken, lineRoutes);
+app.use('/api/selected-defenders', authenticateToken, selectedDefenderRoutes);
 app.use('/api/export', exportRoutes);
 
 // Public game access (read-only)

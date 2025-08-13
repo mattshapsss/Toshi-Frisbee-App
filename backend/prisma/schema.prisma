@@ -36,6 +36,7 @@ model Team {
   members        TeamMember[]
   defenders      Defender[]
   games          Game[]
+  defensiveLines DefensiveLine[]
   
   @@index([slug])
   @@index([inviteCode])
@@ -79,6 +80,8 @@ model Defender {
   statistics     DefenderStats[]
   availableFor   AvailableDefender[]
   currentPointFor CurrentPointDefender[]
+  defensiveLines DefensiveLineDefender[]
+  selectedGames  SelectedDefender[]
   
   @@index([teamId])
   @@index([name])
@@ -105,6 +108,7 @@ model Game {
   points         Point[]
   sessions       GameSession[]
   activities     Activity[]
+  selectedDefenders SelectedDefender[]
   
   @@index([slug])
   @@index([shareCode])
@@ -283,5 +287,47 @@ model CurrentPointDefender {
   offensivePlayer   OffensivePlayer @relation(fields: [offensivePlayerId], references: [id], onDelete: Cascade)
   defender          Defender        @relation(fields: [defenderId], references: [id], onDelete: Cascade)
   
+  @@index([defenderId])
+}
+
+model DefensiveLine {
+  id             String         @id @default(cuid())
+  teamId         String
+  name           String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  defenders      DefensiveLineDefender[]
+  
+  @@index([teamId])
+}
+
+model DefensiveLineDefender {
+  id             String         @id @default(cuid())
+  lineId         String
+  defenderId     String
+  order          Int            @default(0)
+  
+  line           DefensiveLine  @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  defender       Defender       @relation(fields: [defenderId], references: [id], onDelete: Cascade)
+  
+  @@unique([lineId, defenderId])
+  @@index([lineId])
+  @@index([defenderId])
+}
+
+model SelectedDefender {
+  id             String         @id @default(cuid())
+  gameId         String
+  defenderId     String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  defender       Defender       @relation(fields: [defenderId], references: [id], onDelete: Cascade)
+  
+  @@unique([gameId, defenderId])
+  @@index([gameId])
   @@index([defenderId])
 }

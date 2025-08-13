@@ -314,3 +314,45 @@ export const pointsApi = {
     return response.data;
   },
 };
+
+// Defensive Lines API
+export const linesApi = {
+  listByTeam: async (teamId: string) => {
+    const response = await api.get(`/lines/team/${teamId}`);
+    return response.data;
+  },
+
+  create: async (data: {
+    teamId: string;
+    name: string;
+    defenderIds: string[];
+  }) => {
+    const response = await api.post('/lines', data);
+    return response.data;
+  },
+
+  update: async (lineId: string, data: {
+    name?: string;
+    defenderIds?: string[];
+  }) => {
+    const response = await api.put(`/lines/${lineId}`, data);
+    return response.data;
+  },
+
+  delete: async (lineId: string) => {
+    await api.delete(`/lines/${lineId}`);
+  },
+};
+
+// Selected Defenders API
+export const selectedDefendersApi = {
+  getByGame: async (gameId: string) => {
+    const response = await api.get(`/selected-defenders/game/${gameId}`);
+    return response.data;
+  },
+
+  updateByGame: async (gameId: string, defenderIds: string[]) => {
+    const response = await api.put(`/selected-defenders/game/${gameId}`, { defenderIds });
+    return response.data;
+  },
+};

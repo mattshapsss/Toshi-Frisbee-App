@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Minus, ArrowLeft, Users, BarChart3, Download, Clock, Save, Share2, CheckCircle, PlayCircle } from 'lucide-react';
-import { gamesApi, defendersApi, pointsApi } from '../lib/api';
+import { gamesApi, defendersApi, pointsApi, selectedDefendersApi } from '../lib/api';
 import { socketManager } from '../lib/socket';
 import { useAuthStore } from '../stores/authStore';
+import CallYourLine from '../components/CallYourLine';
+import SortableTableHeader, { useSortableData } from '../components/SortableTableHeader';
 
 interface GamePageProps {
   isPublic?: boolean;
@@ -36,6 +38,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingPlayerName, setEditingPlayerName] = useState('');
+  const [selectedDefenderIds, setSelectedDefenderIds] = useState<string[]>([]);
 
   // Offensive positions
   const offensivePositions = [
@@ -837,6 +840,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handleSetCurrentPointDefender = async (playerId: string, defenderId: string) => {
     if (!game) return;
     
+    // Check if defender is selected in Call Your Line
+    if (!selectedDefenderIds.includes(defenderId)) {
+      alert('This defender must be selected in "Call Your Line" before they can be assigned to current point');
+      return;
+    }
+    
     try {
       // First check if this defender is already assigned to another player
       const otherPlayer = game.offensivePlayers?.find((p: any) => 
@@ -942,6 +951,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
   };
 
+  // Use sortable data for offensive players
+  const activePlayers = game?.offensivePlayers?.filter((p: any) => !p.isBench) || [];
+  const { sortedData: sortedActivePlayers, sortConfig, handleSort } = useSortableData(
+    activePlayers,
+    'order',
+    'asc'
+  );
+
   const getPlayingTimeStats = () => {
     const stats: any = {};
     
@@ -1039,8 +1056,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     }}
                     className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center"
                   >
-                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Complete</span>
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span>Complete game</span>
                   </button>
                 )}
                 <button
@@ -1160,6 +1177,17 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
           </div>
         )}
 
+        {/* Call Your Line Section */}
+        {!isPublic && game && (
+          <CallYourLine
+            gameId={game.id}
+            teamId={game.teamId}
+            defenders={defenders}
+            offensivePlayers={game.offensivePlayers || []}
+            isPublic={isPublic}
+            onSelectionChange={setSelectedDefenderIds}
+          />
+        )}
 
         {/* Matchups Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -1171,8 +1199,22 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
             <table className="w-full min-w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offensive Player</th>
-                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
+                  <SortableTableHeader
+                    label="Offensive Player"
+                    sortKey="name"
+                    currentSortKey={sortConfig.key}
+                    sortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  />
+                  <SortableTableHeader
+                    label="Position"
+                    sortKey="position"
+                    currentSortKey={sortConfig.key}
+                    sortDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  />
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Potential Matchups</th>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Point</th>
                   {!isPublic && (
@@ -1181,9 +1223,9 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {game.offensivePlayers?.filter((p: any) => !p.isBench).map((player: any, index: number, activeArray: any[]) => {
+                {sortedActivePlayers.map((player: any, index: number) => {
                   const currentDefender = currentPoint.find(cp => cp.offensivePlayerId === player.id);
-                  const isLastActive = index === activeArray.length - 1;
+                  const isLastActive = index === sortedActivePlayers.length - 1;
                   const showBottomBorder = isLastActive && dragOverPlayer === player.id && draggedPlayer && draggedPlayer.id !== player.id && draggedPlayer.isBench;
                   
                   return (
@@ -1285,13 +1327,19 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                               const isInAnyCurrentPoint = game.offensivePlayers?.some((p: any) => 
                                 p.currentPointDefender?.defenderId === ad.defender.id
                               );
+                              // Check if defender is selected in Call Your Line
+                              const isSelected = selectedDefenderIds.includes(ad.defender.id);
+                              
                               return (
                                 <div 
                                   key={ad.id}
                                   className={`px-2 py-1 rounded-md text-xs flex items-center space-x-1 ${
-                                    isInAnyCurrentPoint ? 'opacity-50' : ''
+                                    isInAnyCurrentPoint && !isSelected ? 'opacity-50' : ''
                                   } text-white`}
-                                  style={{ backgroundColor: '#3E8EDE' }}
+                                  style={{ 
+                                    backgroundColor: isSelected || isInAnyCurrentPoint ? '#3E8EDE' : '#93C5FD',
+                                    opacity: isSelected && !isInAnyCurrentPoint ? 1 : isInAnyCurrentPoint ? 0.6 : 0.5
+                                  }}
                                 >
                                   <span>{ad.defender.name}</span>
                                   {!isPublic && (
@@ -1361,11 +1409,13 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                                 defaultValue=""
                               >
                                 <option value="">{player.currentPointDefender ? '↻ Replace' : '+ Select'}</option>
-                                {player.availableDefenders?.map((ad: any) => (
-                                  <option key={ad.defender.id} value={ad.defender.id}>
-                                    {ad.defender.name}
-                                  </option>
-                                ))}
+                                {player.availableDefenders
+                                  ?.filter((ad: any) => selectedDefenderIds.includes(ad.defender.id))
+                                  .map((ad: any) => (
+                                    <option key={ad.defender.id} value={ad.defender.id}>
+                                      {ad.defender.name}
+                                    </option>
+                                  ))}
                               </select>
                             )}
                             {!player.currentPointDefender && !player.availableDefenders?.length && !isPublic && (

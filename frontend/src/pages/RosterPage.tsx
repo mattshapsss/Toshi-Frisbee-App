@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Minus, ArrowLeft, Users, BarChart3 } from 'lucide-react';
 import { defendersApi, teamsApi } from '../lib/api';
+import BuildLines from '../components/BuildLines';
+import SortableTableHeader, { useSortableData } from '../components/SortableTableHeader';
 
 export default function RosterPage() {
   const { teamId } = useParams();
@@ -94,6 +96,19 @@ export default function RosterPage() {
     
     return { total, breaks, breakPercent };
   };
+
+  // Prepare data for sorting
+  const defendersWithStats = defenders.map((defender: any) => ({
+    ...defender,
+    stats: calculateStats(defender),
+  }));
+
+  // Use sortable data hook
+  const { sortedData: sortedDefenders, sortConfig, handleSort } = useSortableData(
+    defendersWithStats,
+    'name',
+    'asc'
+  );
 
   if (!team) {
     return (
@@ -208,17 +223,51 @@ export default function RosterPage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Jersey</th>
-                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total Points</th>
-                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Breaks</th>
-                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Break %</th>
+                    <SortableTableHeader
+                      label="Name"
+                      sortKey="name"
+                      currentSortKey={sortConfig.key}
+                      sortDirection={sortConfig.direction}
+                      onSort={handleSort}
+                      className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                    />
+                    <SortableTableHeader
+                      label="Jersey"
+                      sortKey="jerseyNumber"
+                      currentSortKey={sortConfig.key}
+                      sortDirection={sortConfig.direction}
+                      onSort={handleSort}
+                      className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase"
+                    />
+                    <SortableTableHeader
+                      label="Total Points"
+                      sortKey="stats.total"
+                      currentSortKey={sortConfig.key}
+                      sortDirection={sortConfig.direction}
+                      onSort={handleSort}
+                      className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase"
+                    />
+                    <SortableTableHeader
+                      label="Breaks"
+                      sortKey="stats.breaks"
+                      currentSortKey={sortConfig.key}
+                      sortDirection={sortConfig.direction}
+                      onSort={handleSort}
+                      className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase"
+                    />
+                    <SortableTableHeader
+                      label="Break %"
+                      sortKey="stats.breakPercent"
+                      currentSortKey={sortConfig.key}
+                      sortDirection={sortConfig.direction}
+                      onSort={handleSort}
+                      className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase"
+                    />
                     <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Delete</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {defenders.map((defender: any, index: number) => {
-                    const stats = calculateStats(defender);
+                  {sortedDefenders.map((defender: any, index: number) => {
                     return (
                       <tr key={defender.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-3 py-3 text-sm font-medium text-gray-900">{defender.name}</td>
@@ -234,23 +283,23 @@ export default function RosterPage() {
                         <td className="px-3 py-3 text-center">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white" 
                                 style={{ backgroundColor: '#3E8EDE' }}>
-                            {stats.total}
+                            {defender.stats.total}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                            {stats.breaks}
+                            {defender.stats.breaks}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            stats.total === 0 
+                            defender.stats.total === 0 
                               ? 'bg-gray-100 text-gray-800'
-                              : stats.breakPercent >= 50 
+                              : defender.stats.breakPercent >= 50 
                                 ? 'bg-emerald-100 text-emerald-800' 
                                 : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {stats.total === 0 ? '-' : `${stats.breakPercent}%`}
+                            {defender.stats.total === 0 ? '-' : `${defender.stats.breakPercent}%`}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-center">
@@ -283,6 +332,11 @@ export default function RosterPage() {
             </div>
           )}
         </div>
+
+        {/* Build Defensive Lines */}
+        {defenders.length > 0 && (
+          <BuildLines teamId={teamId!} defenders={defenders} />
+        )}
 
         {/* Summary Stats */}
         {defenders.length > 0 && (
