@@ -196,7 +196,10 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
       const handleOffensivePlayerUpdate = (data: any) => {
         console.log('Offensive player update received:', data);
-        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
+        // Add small delay to ensure both mutations complete
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
+        }, 100);
       };
 
       // Register all event handlers
