@@ -509,6 +509,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         if ('vibrate' in navigator) {
           navigator.vibrate(50);
         }
+        // Start auto-scroll interval for continuous scrolling
+        startAutoScroll();
       }
     }, 300); // Reduced to 300ms for better responsiveness
     
@@ -530,6 +532,19 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       if (touchInfo.isDragActivated && !touchInfo.isScrolling) {
         moveEvent.preventDefault(); // Prevent scrolling while dragging
         setDragPosition({ x: moveTouch.clientX, y: moveTouch.clientY });
+        
+        // Auto-scroll when near edges for mobile
+        const scrollSpeed = 8;
+        const scrollThreshold = 100;
+        const windowHeight = window.innerHeight;
+        
+        if (moveTouch.clientY < scrollThreshold) {
+          // Scroll up
+          window.scrollBy(0, -scrollSpeed);
+        } else if (moveTouch.clientY > windowHeight - scrollThreshold) {
+          // Scroll down  
+          window.scrollBy(0, scrollSpeed);
+        }
         
         // Find element under finger
         const draggedElement = document.getElementById('dragged-player-clone');
@@ -615,6 +630,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       setDragPosition(null);
       setDraggedRowHTML('');
       setTouchTimeout(null);
+      stopAutoScroll();
     };
     
     // Attach event listeners
@@ -639,6 +655,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       clearTimeout(touchTimeout);
       setTouchTimeout(null);
     }
+    // Ensure auto-scroll is stopped
+    stopAutoScroll();
   };
 
   // Handler functions for Available Defenders and Current Point
