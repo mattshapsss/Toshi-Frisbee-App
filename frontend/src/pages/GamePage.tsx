@@ -24,6 +24,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const [draggedDefender, setDraggedDefender] = useState<any | null>(null);
   const [dragOverPlayer, setDragOverPlayer] = useState<string | null>(null);
   const [draggedPlayer, setDraggedPlayer] = useState<any | null>(null);
+  const [dragOverBench, setDragOverBench] = useState(false);
+  const [autoScrollInterval, setAutoScrollInterval] = useState<NodeJS.Timeout | null>(null);
   const [touchTimeout, setTouchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState<{x: number, y: number} | null>(null);
@@ -72,6 +74,15 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       setNewOffenderName('');
+    }
+  });
+
+  // Reorder offensive players mutation
+  const reorderOffensivePlayersMutation = useMutation({
+    mutationFn: ({ gameId, playerIds }: { gameId: string, playerIds: string[] }) => 
+      gamesApi.reorderOffensivePlayers(gameId, playerIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
     }
   });
 
@@ -225,7 +236,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       addOffensivePlayerMutation.mutate({
         name: newOffenderName.trim(),
         position: newOffenderPosition,
-        isBench: game.offensivePlayers?.length >= 7
+        isBench: false
       });
     }
   };
@@ -353,45 +364,116 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handlePlayerDragStart = (e: React.DragEvent, player: any) => {
     setDraggedPlayer(player);
     e.dataTransfer.effectAllowed = 'move';
+    
+    // Add mouse move listener for auto-scroll
+    const handleMouseMove = (event: MouseEvent) => {
+      setDragPosition({ x: event.clientX, y: event.clientY });
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    
+    // Store cleanup function
+    const cleanup = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      setDragPosition(null);
+    };
+    
+    // Store cleanup on the dragged player for later
+    e.dataTransfer.setData('cleanup', 'true');
+    (window as any).dragCleanup = cleanup;
+    
+    startAutoScroll();
+  };
+
+  // Auto-scroll functionality
+  const startAutoScroll = () => {
+    if (autoScrollInterval) return;
+    
+    const interval = setInterval(() => {
+      const scrollSpeed = 10;
+      const scrollThreshold = 100;
+      
+      if (dragPosition) {
+        const { y } = dragPosition;
+        const windowHeight = window.innerHeight;
+        
+        if (y < scrollThreshold) {
+          window.scrollBy(0, -scrollSpeed);
+        } else if (y > windowHeight - scrollThreshold) {
+          window.scrollBy(0, scrollSpeed);
+        }
+      }
+    }, 16); // ~60fps
+    
+    setAutoScrollInterval(interval);
+  };
+
+  const stopAutoScroll = () => {
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval);
+      setAutoScrollInterval(null);
+    }
   };
 
   const handlePlayerDragEnd = () => {
     setDraggedPlayer(null);
     setDragOverPlayer(null);
+    setDragOverBench(false);
+    stopAutoScroll();
+    
+    // Clean up mouse move listener
+    if ((window as any).dragCleanup) {
+      (window as any).dragCleanup();
+      delete (window as any).dragCleanup;
+    }
   };
 
-  const handlePlayerDrop = async (e: React.DragEvent, targetPlayer: any) => {
+  const handlePlayerDrop = (e: React.DragEvent, targetPlayer: any) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (draggedPlayer && draggedPlayer.id !== targetPlayer.id) {
-      // Only swap if they're in different sections (bench vs active)
+    if (!draggedPlayer || draggedPlayer.id === targetPlayer.id) {
+      setDraggedPlayer(null);
+      setDragOverPlayer(null);
+      stopAutoScroll();
+      return;
+    }
+    
+    const players = game.offensivePlayers || [];
+    const draggedIndex = players.findIndex((p: any) => p.id === draggedPlayer.id);
+    const targetIndex = players.findIndex((p: any) => p.id === targetPlayer.id);
+    
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      const newPlayers = [...players];
+      
+      // If dragging to a different section, update bench status
       if (draggedPlayer.isBench !== targetPlayer.isBench) {
-        try {
-          // Store original bench states
-          const draggedPlayerOriginalBench = draggedPlayer.isBench;
-          const targetPlayerOriginalBench = targetPlayer.isBench;
-          
-          // Swap the bench status of the two players
-          await updateOffensivePlayerMutation.mutateAsync({
-            playerId: draggedPlayer.id,
-            data: { isBench: targetPlayerOriginalBench }
-          });
-          await updateOffensivePlayerMutation.mutateAsync({
-            playerId: targetPlayer.id,
-            data: { isBench: draggedPlayerOriginalBench }
-          });
-          
-          // Invalidate query to refresh the UI
-          await queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
-        } catch (error) {
-          console.error('Error swapping players:', error);
-        }
+        newPlayers[draggedIndex] = { ...newPlayers[draggedIndex], isBench: targetPlayer.isBench };
       }
+      
+      // Remove dragged player from its position
+      const [removed] = newPlayers.splice(draggedIndex, 1);
+      
+      // Find the new target index after removal
+      const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+      
+      // Insert at the target position
+      if (newTargetIndex !== -1) {
+        newPlayers.splice(newTargetIndex, 0, removed);
+      } else {
+        newPlayers.push(removed);
+      }
+      
+      // Call the reorder API
+      reorderOffensivePlayersMutation.mutate({
+        gameId: game.id,
+        playerIds: newPlayers.map((p: any) => p.id)
+      });
     }
     
     setDraggedPlayer(null);
     setDragOverPlayer(null);
+    stopAutoScroll();
   };
 
   // Touch event handlers for mobile player swapping
@@ -1138,14 +1220,34 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                   );
                 })}
                 
-                {/* Bench separator */}
-                {game.offensivePlayers?.some((p: any) => p.isBench) && (
-                  <tr>
-                    <td colSpan={isPublic ? 4 : 5} className="px-4 py-2 text-center bg-gray-100">
-                      <span className="text-sm font-semibold text-gray-600 uppercase">— Bench —</span>
-                    </td>
-                  </tr>
-                )}
+                {/* Bench separator - always visible */}
+                <tr
+                  className={`${dragOverBench ? 'ring-2 ring-blue-400 bg-blue-100' : ''} transition-all`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (draggedPlayer && !draggedPlayer.isBench) {
+                      setDragOverBench(true);
+                    }
+                  }}
+                  onDragLeave={() => setDragOverBench(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedPlayer && !draggedPlayer.isBench) {
+                      // Move player to bench
+                      updateOffensivePlayerMutation.mutate({
+                        playerId: draggedPlayer.id,
+                        data: { isBench: true }
+                      });
+                    }
+                    setDragOverBench(false);
+                    setDraggedPlayer(null);
+                    stopAutoScroll();
+                  }}
+                >
+                  <td colSpan={isPublic ? 4 : 5} className="px-4 py-2 text-center bg-gray-100">
+                    <span className="text-sm font-semibold text-gray-600 uppercase">— Bench —</span>
+                  </td>
+                </tr>
                 
                 {/* Bench players */}
                 {game.offensivePlayers?.filter((p: any) => p.isBench).map((player: any, index: number) => (
