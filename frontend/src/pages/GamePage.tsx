@@ -451,6 +451,11 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     const players = game.offensivePlayers || [];
     
+    // Get the target element to check if it's marked as last active
+    const targetElement = e.currentTarget as HTMLElement;
+    const isTargetLastActive = targetElement.getAttribute('data-last-active') === 'true';
+    const isTargetLastBench = targetElement.getAttribute('data-last-bench') === 'true';
+    
     // Create new array with proper ordering
     const newPlayers = [...players];
     const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
@@ -466,40 +471,44 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     // Remove the dragged item first
     const [draggedItem] = newPlayers.splice(draggedIndex, 1);
     
-    // Now find the target's new index after removal
-    const newTargetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
-    
-    // Check if target is the last active player
-    const activePlayers = newPlayers.filter((p: any) => !p.isBench);
-    const isTargetLastActive = !targetPlayer.isBench && 
-      (newTargetIndex === -1 || targetPlayer.id === activePlayers[activePlayers.length - 1]?.id);
-    
     // Update bench status if moving between sections
-    if (draggedPlayer.isBench !== targetPlayer.isBench) {
-      draggedItem.isBench = targetPlayer.isBench;
+    const wasOnBench = draggedPlayer.isBench;
+    const targetOnBench = targetPlayer.isBench;
+    
+    if (wasOnBench !== targetOnBench) {
+      draggedItem.isBench = targetOnBench;
       // Update bench status in backend
       await updateOffensivePlayerMutation.mutateAsync({
         playerId: draggedItem.id,
-        data: { isBench: targetPlayer.isBench }
+        data: { isBench: targetOnBench }
       });
     }
     
     // Calculate insertion index
     let insertIndex;
-    if (isTargetLastActive && draggedPlayer.isBench && !targetPlayer.isBench) {
-      // Dropping from bench onto last active - insert at the boundary
+    
+    // Special case: dropping from bench to last active position
+    if (isTargetLastActive && wasOnBench && !targetOnBench) {
+      // Insert at the end of active section (right before bench)
       const firstBenchIdx = newPlayers.findIndex((p: any) => p.isBench);
       insertIndex = firstBenchIdx !== -1 ? firstBenchIdx : newPlayers.length;
-    } else if (newTargetIndex !== -1) {
-      // Normal reordering
-      insertIndex = newTargetIndex;
-      if (draggedIndex > targetIndex) {
-        // If we dragged from after the target, insert after the target's new position
-        insertIndex = newTargetIndex + 1;
+    }
+    // Special case: dropping to last bench position
+    else if (isTargetLastBench) {
+      // Place at the very end
+      insertIndex = newPlayers.length;
+    }
+    // Normal reordering within same section or between sections
+    else {
+      // Find target's new position after removal
+      const newTargetIdx = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+      if (newTargetIdx !== -1) {
+        // Insert based on original relative positions
+        insertIndex = draggedIndex < targetIndex ? newTargetIdx : newTargetIdx + 1;
+      } else {
+        // Fallback
+        insertIndex = Math.min(targetIndex, newPlayers.length);
       }
-    } else {
-      // Target not found (shouldn't happen), insert at original position
-      insertIndex = Math.min(draggedIndex, newPlayers.length);
     }
     
     // Insert at new position
