@@ -1094,7 +1094,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       draggable={!isPublic}
                       onDragStart={(e) => handlePlayerDragStart(e, player)}
                       onDragEnd={handlePlayerDragEnd}
-                      onDragOver={(e) => e.preventDefault()}
+                      onDragOver={(e) => handlePlayerDragOver(e, player.id)}
                       onDrop={(e) => handlePlayerDrop(e, player)}
                       onDragEnter={(e) => {
                         if (draggedPlayer && draggedPlayer.id !== player.id) {
@@ -1353,7 +1353,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                     draggable={!isPublic}
                     onDragStart={(e) => handlePlayerDragStart(e, player)}
                     onDragEnd={handlePlayerDragEnd}
-                    onDragOver={(e) => e.preventDefault()}
+                    onDragOver={(e) => handlePlayerDragOver(e, player.id)}
                     onDrop={(e) => handlePlayerDrop(e, player)}
                     onDragEnter={(e) => {
                       if (draggedPlayer && draggedPlayer.id !== player.id) {
