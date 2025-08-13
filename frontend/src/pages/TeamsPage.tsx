@@ -265,26 +265,6 @@ export default function TeamsPage() {
                       <span>{team._count?.defenders || 0} defenders</span>
                       <span>{team._count?.games || 0} games</span>
                     </div>
-                    {team.inviteCode && (
-                      <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Team Invite Code:</p>
-                            <p className="text-2xl font-mono font-bold text-blue-600">{team.inviteCode}</p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(team.inviteCode);
-                              alert('Invite code copied to clipboard!');
-                            }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                          >
-                            Copy Code
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-2">Share this code with teammates to let them join</p>
-                      </div>
-                    )}
                   </div>
                   <div className="flex gap-1 flex-shrink-0 -ml-2">
                     <button
@@ -318,6 +298,28 @@ export default function TeamsPage() {
                     )}
                   </div>
                 </div>
+                
+                {/* Invite Code Box - Full Width */}
+                {team.inviteCode && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Team Invite Code:</p>
+                        <p className="text-2xl font-mono font-bold text-blue-600">{team.inviteCode}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(team.inviteCode);
+                          alert('Invite code copied to clipboard!');
+                        }}
+                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Copy Code
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">Share this code with teammates to let them join</p>
+                  </div>
+                )}
 
                 {/* Edit Team Form */}
                 {editingTeam?.id === team.id && (
