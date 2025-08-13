@@ -374,6 +374,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const handlePlayerDragStart = (e: React.DragEvent, player: any) => {
     setDraggedPlayer(player);
     e.dataTransfer.effectAllowed = 'move';
+    // Set some data to make Firefox happy
+    e.dataTransfer.setData('text/plain', player.id);
     
     // Add mouse move listener for auto-scroll
     const handleMouseMove = (event: MouseEvent) => {
@@ -389,7 +391,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     };
     
     // Store cleanup on the dragged player for later
-    e.dataTransfer.setData('cleanup', 'true');
     (window as any).dragCleanup = cleanup;
     
     startAutoScroll();
@@ -449,81 +450,97 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       return;
     }
     
-    const players = game.offensivePlayers || [];
+    // Get the current visual order from the sorted arrays
+    const visibleActivePlayers = sortedActivePlayers || [];
+    const visibleBenchPlayers = game.offensivePlayers?.filter((p: any) => p.isBench) || [];
     
     // Get the target element to check if it's marked as last active
     const targetElement = e.currentTarget as HTMLElement;
     const isTargetLastActive = targetElement.getAttribute('data-last-active') === 'true';
     const isTargetLastBench = targetElement.getAttribute('data-last-bench') === 'true';
     
-    // Create new array with proper ordering
-    const newPlayers = [...players];
-    const draggedIndex = newPlayers.findIndex((p: any) => p.id === draggedPlayer.id);
-    const targetIndex = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
+    // Find visual indices for drag calculation
+    const draggedVisualIndex = draggedPlayer.isBench 
+      ? visibleBenchPlayers.findIndex((p: any) => p.id === draggedPlayer.id)
+      : visibleActivePlayers.findIndex((p: any) => p.id === draggedPlayer.id);
     
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedPlayer(null);
-      setDragOverPlayer(null);
-      stopAutoScroll();
-      return;
+    const targetVisualIndex = targetPlayer.isBench
+      ? visibleBenchPlayers.findIndex((p: any) => p.id === targetPlayer.id)
+      : visibleActivePlayers.findIndex((p: any) => p.id === targetPlayer.id);
+    
+    // Build the new order based on the visual arrangement
+    let newOrderedIds: string[] = [];
+    
+    // First, handle the active players
+    const activePlayerIds = [...visibleActivePlayers].map(p => p.id);
+    const benchPlayerIds = [...visibleBenchPlayers].map(p => p.id);
+    
+    // Remove dragged player from its current list
+    if (draggedPlayer.isBench) {
+      const idx = benchPlayerIds.indexOf(draggedPlayer.id);
+      if (idx > -1) benchPlayerIds.splice(idx, 1);
+    } else {
+      const idx = activePlayerIds.indexOf(draggedPlayer.id);
+      if (idx > -1) activePlayerIds.splice(idx, 1);
     }
     
-    // Remove the dragged item first
-    const [draggedItem] = newPlayers.splice(draggedIndex, 1);
+    // Insert dragged player in new position
+    if (targetPlayer.isBench) {
+      // Dropping in bench section
+      if (isTargetLastBench) {
+        benchPlayerIds.push(draggedPlayer.id);
+      } else {
+        const targetIdx = benchPlayerIds.indexOf(targetPlayer.id);
+        if (targetIdx > -1) {
+          // Insert based on visual drag direction
+          if (!draggedPlayer.isBench || draggedVisualIndex < targetVisualIndex) {
+            benchPlayerIds.splice(targetIdx + 1, 0, draggedPlayer.id);
+          } else {
+            benchPlayerIds.splice(targetIdx, 0, draggedPlayer.id);
+          }
+        } else {
+          benchPlayerIds.push(draggedPlayer.id);
+        }
+      }
+    } else {
+      // Dropping in active section
+      if (isTargetLastActive && draggedPlayer.isBench) {
+        // Special case: dropping from bench to last active
+        activePlayerIds.push(draggedPlayer.id);
+      } else {
+        const targetIdx = activePlayerIds.indexOf(targetPlayer.id);
+        if (targetIdx > -1) {
+          // Insert based on visual drag direction
+          if (draggedPlayer.isBench || draggedVisualIndex < targetVisualIndex) {
+            activePlayerIds.splice(targetIdx + 1, 0, draggedPlayer.id);
+          } else {
+            activePlayerIds.splice(targetIdx, 0, draggedPlayer.id);
+          }
+        } else {
+          activePlayerIds.push(draggedPlayer.id);
+        }
+      }
+    }
+    
+    // Combine the lists - active first, then bench
+    newOrderedIds = [...activePlayerIds, ...benchPlayerIds];
     
     // Update bench status if moving between sections
     const wasOnBench = draggedPlayer.isBench;
     const targetOnBench = targetPlayer.isBench;
     
     if (wasOnBench !== targetOnBench) {
-      draggedItem.isBench = targetOnBench;
       // Update bench status in backend
       await updateOffensivePlayerMutation.mutateAsync({
-        playerId: draggedItem.id,
+        playerId: draggedPlayer.id,
         data: { isBench: targetOnBench }
       });
     }
     
-    // Calculate insertion index
-    let insertIndex;
-    
-    // Special case: dropping from bench to last active position
-    if (isTargetLastActive && wasOnBench && !targetOnBench) {
-      // Insert at the end of active section (right before bench)
-      const firstBenchIdx = newPlayers.findIndex((p: any) => p.isBench);
-      insertIndex = firstBenchIdx !== -1 ? firstBenchIdx : newPlayers.length;
-    }
-    // Special case: dropping to last bench position
-    else if (isTargetLastBench) {
-      // Place at the very end
-      insertIndex = newPlayers.length;
-    }
-    // Normal reordering within same section or between sections
-    else {
-      // Find target's new position after removal
-      const newTargetIdx = newPlayers.findIndex((p: any) => p.id === targetPlayer.id);
-      if (newTargetIdx !== -1) {
-        // If dragging within the same section, we need to consider the direction
-        if (draggedIndex < targetIndex) {
-          // Dragging from above to below - insert after target
-          insertIndex = newTargetIdx + 1;
-        } else {
-          // Dragging from below to above - insert before target
-          insertIndex = newTargetIdx;
-        }
-      } else {
-        // Fallback
-        insertIndex = Math.min(targetIndex, newPlayers.length);
-      }
-    }
-    
-    // Insert at new position
-    newPlayers.splice(insertIndex, 0, draggedItem);
-    
-    // Call the reorder API with all players to maintain order
+    // Call the reorder API with the new order
     await reorderOffensivePlayersMutation.mutateAsync({
       gameId: game.id,
-      playerIds: newPlayers.map((p: any) => p.id)
+      playerIds: newOrderedIds
     });
     
     setDraggedPlayer(null);
