@@ -21,7 +21,7 @@ export default function HomePage() {
   const [openMenuGameId, setOpenMenuGameId] = useState<string | null>(null);
 
   // Fetch user's teams
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [], isLoading: teamsLoading } = useQuery({
     queryKey: ['teams'],
     queryFn: teamsApi.list
   });
@@ -196,7 +196,7 @@ export default function HomePage() {
         )}
 
         {/* Team Selection */}
-        {teams.length === 0 ? (
+        {!teamsLoading && teams.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">Welcome! Let's Get Started</h3>
             <p className="text-gray-600 mb-4">You need to join or create a team to start tracking games.</p>

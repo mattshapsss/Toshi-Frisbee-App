@@ -36,7 +36,6 @@ router.get('/team/:teamId', requireTeamAccess('VIEWER'), async (req: AuthRequest
     const defenders = await prisma.defender.findMany({
       where: { 
         teamId: req.params.teamId,
-        active: true,
       },
       include: {
         statistics: true,
@@ -172,7 +171,7 @@ router.put('/:defenderId', async (req: AuthRequest, res, next) => {
   }
 });
 
-// Delete defender (soft delete by setting active = false)
+// Delete defender (hard delete)
 router.delete('/:defenderId', async (req: AuthRequest, res, next) => {
   try {
     // Get defender to check team access
@@ -198,9 +197,9 @@ router.delete('/:defenderId', async (req: AuthRequest, res, next) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
     
-    await prisma.defender.update({
+    // Hard delete the defender
+    await prisma.defender.delete({
       where: { id: req.params.defenderId },
-      data: { active: false },
     });
     
     res.status(204).send();
