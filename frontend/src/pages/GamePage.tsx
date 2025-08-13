@@ -805,7 +805,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     stopAutoScroll();
   };
 
-  // Handler functions for Available Defenders and Current Point
+  // Handler functions for Potential Matchups and Current Point
   const handleAddAvailableDefender = async (playerId: string, defenderId: string) => {
     if (!game) return;
     
@@ -1173,7 +1173,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 <tr>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offensive Player</th>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
-                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Available Defenders</th>
+                  <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Potential Matchups</th>
                   <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Point</th>
                   {!isPublic && (
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Delete</th>
@@ -1276,7 +1276,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                           </span>
                         )}
                       </td>
-                      {/* Available Defenders Column */}
+                      {/* Potential Matchups Column */}
                       <td className="px-2 sm:px-4 py-3">
                         <div className="min-h-10 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                           <div className="flex flex-wrap gap-1 items-center">
@@ -1522,7 +1522,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                         </span>
                       )}
                     </td>
-                    {/* Available Defenders Column for Bench */}
+                    {/* Potential Matchups Column for Bench */}
                     <td className="px-2 sm:px-4 py-3">
                       <div className="min-h-10 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                         <div className="flex flex-wrap gap-1 items-center">
