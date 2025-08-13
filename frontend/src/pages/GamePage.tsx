@@ -896,7 +896,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                                 )}
                               </div>
                             )}
-                            {!isPublic && !player.currentPointDefender && (
+                            {!isPublic && (
                               <select
                                 onChange={(e) => {
                                   if (e.target.value) {
@@ -907,7 +907,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                                 className="text-xs px-1 py-1 border rounded min-w-12"
                                 defaultValue=""
                               >
-                                <option value="">+ Select</option>
+                                <option value="">{player.currentPointDefender ? '↻ Replace' : '+ Select'}</option>
                                 {player.availableDefenders?.map((ad: any) => (
                                   <option key={ad.defender.id} value={ad.defender.id}>
                                     {ad.defender.name}
@@ -915,8 +915,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                                 ))}
                               </select>
                             )}
-                            {!player.currentPointDefender && !isPublic && (
-                              <span className="text-gray-400 text-xs">Select defender</span>
+                            {!player.currentPointDefender && !player.availableDefenders?.length && !isPublic && (
+                              <span className="text-gray-400 text-xs">Add defenders first</span>
                             )}
                           </div>
                         </div>
