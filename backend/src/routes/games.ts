@@ -377,6 +377,13 @@ router.put('/:gameId/offensive-players/reorder', async (req: AuthRequest, res, n
       orderBy: [{ isBench: 'asc' }, { order: 'asc' }],
     });
     
+    // Emit socket event for real-time updates
+    io.to(`game:${req.params.gameId}`).emit('players-reordered', {
+      players,
+      userId: req.user!.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     res.json(players);
   } catch (error) {
     next(error);

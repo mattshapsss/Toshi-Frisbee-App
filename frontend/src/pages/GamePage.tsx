@@ -212,6 +212,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       socketManager.on('player-added', handleOffensivePlayerUpdate);
       socketManager.on('player-updated', handleOffensivePlayerUpdate);
       socketManager.on('player-removed', handleOffensivePlayerUpdate);
+      socketManager.on('players-reordered', handleOffensivePlayerUpdate);
 
       return () => {
         socketManager.off('game-updated', handleGameUpdate);
@@ -226,6 +227,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         socketManager.off('player-added', handleOffensivePlayerUpdate);
         socketManager.off('player-updated', handleOffensivePlayerUpdate);
         socketManager.off('player-removed', handleOffensivePlayerUpdate);
+        socketManager.off('players-reordered', handleOffensivePlayerUpdate);
         socketManager.leaveGame();
       };
     }
