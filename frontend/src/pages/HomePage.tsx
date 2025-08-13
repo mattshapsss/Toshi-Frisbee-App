@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Users, Target, Calendar, LogOut, BarChart3, UserPlus, PlayCircle, CheckCircle, Archive, Clock, Trash2, Edit2, MoreVertical } from 'lucide-react';
@@ -36,6 +36,20 @@ export default function HomePage() {
       }
     }
   }, [teams]); // Don't include currentTeam to avoid loops
+
+  // Close menu popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Check if click is outside the menu button and menu popup
+      if (!target.closest('.game-menu-button') && !target.closest('.game-menu-popup')) {
+        setOpenMenuGameId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch games for current team
   const { data: games = [] } = useQuery({
@@ -83,6 +97,11 @@ export default function HomePage() {
     mutationFn: gamesApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
+      setOpenMenuGameId(null);
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete game:', error);
+      alert(error.response?.data?.error || 'Failed to delete game');
     }
   });
 
@@ -357,12 +376,12 @@ export default function HomePage() {
                             e.stopPropagation();
                             setOpenMenuGameId(openMenuGameId === game.id ? null : game.id);
                           }}
-                          className="p-1 hover:bg-gray-100 rounded-full"
+                          className="game-menu-button p-1 hover:bg-gray-100 rounded-full"
                         >
                           <MoreVertical className="h-4 w-4 text-gray-500" />
                         </button>
                         {openMenuGameId === game.id && (
-                          <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                          <div className="game-menu-popup absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

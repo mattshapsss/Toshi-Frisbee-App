@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, User, Mail, Shield, Save, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { authApi } from '../lib/api';
+import { authApi, teamsApi } from '../lib/api';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -16,6 +16,12 @@ export default function ProfilePage() {
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+
+  // Fetch user's teams
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams'],
+    queryFn: teamsApi.list
+  });
 
   const updatePasswordMutation = useMutation({
     mutationFn: authApi.updatePassword,
@@ -229,7 +235,7 @@ export default function ProfilePage() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Account Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-800">{user?.teams?.length || 0}</div>
+              <div className="text-2xl font-bold text-blue-800">{teams.length}</div>
               <div className="text-sm text-gray-600">Teams</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">

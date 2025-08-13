@@ -130,27 +130,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     }
   }, [pointStartTime]);
 
-  // Auto-complete game after 3 hours
-  useEffect(() => {
-    if (game && game.status === 'IN_PROGRESS') {
-      const gameStartTime = new Date(game.updatedAt || game.createdAt);
-      const now = new Date();
-      const hoursElapsed = (now.getTime() - gameStartTime.getTime()) / (1000 * 60 * 60);
-      
-      if (hoursElapsed >= 3) {
-        // Auto-complete the game
-        updateGameStatusMutation.mutate('COMPLETED');
-      } else {
-        // Set timer for remaining time
-        const remainingMs = (3 * 60 * 60 * 1000) - (now.getTime() - gameStartTime.getTime());
-        const timer = setTimeout(() => {
-          updateGameStatusMutation.mutate('COMPLETED');
-        }, remainingMs);
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [game?.id, game?.status]);
+  // Removed auto-complete functionality - games now only complete when user explicitly presses complete button
 
   // WebSocket setup
   useEffect(() => {

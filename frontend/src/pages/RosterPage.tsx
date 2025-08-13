@@ -159,7 +159,7 @@ export default function RosterPage() {
                 value={newDefenderNumber}
                 onChange={(e) => setNewDefenderNumber(e.target.value)}
                 placeholder="Jersey # (optional)"
-                className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-40 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddDefender()}
               />
               <button
