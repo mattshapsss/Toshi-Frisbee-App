@@ -1,21 +1,41 @@
-# Ultimate D-Line Manager
+# Ultimate D-Line Manager 🥏
 
-A real-time collaborative web application for managing Ultimate Frisbee defensive line matchups and tracking game statistics. Built for coaches and captains to efficiently manage defensive strategies during games.
+A real-time collaborative web application for managing Ultimate Frisbee defensive line matchups and tracking game statistics. Built for coaches and captains to efficiently manage defensive strategies during games with seamless multi-device synchronization.
 
 ## 🎯 Core Features
 
 ### Game Management
 - **Call Your Line**: Select up to 7 defenders for the active point with visual feedback
   - Real-time selection sync across all coaches
-  - Integration with matchup assignments
-  - Load pre-built defensive lines instantly
-  - Visual indicators for selected vs available defenders
+  - Integration with matchup assignments - only selected defenders can be assigned
+  - Load pre-built defensive lines instantly via dropdown
+  - Visual indicators: blue for selected, gray for available, green dots for assigned
+  - No disruptive warnings - smooth, silent validation
 - **Real-time Collaboration**: Multiple coaches/captains can manage the same game simultaneously with instant updates via WebSockets
-- **Drag-and-Drop Interface**: Intuitive player management with desktop and mobile support
+  - Proper room-based synchronization for all game events
+  - Active user tracking and connection status
+  - Optimistic UI updates with server reconciliation
+- **Advanced Drag-and-Drop**: Full-featured player management for desktop and mobile
+  - Reorder players within active roster or bench sections
+  - Move players between active and bench with visual drop zones
+  - Works with sorted tables - respects visual order
+  - Mobile: Long-press (300ms) with haptic feedback
+  - Desktop: Native HTML5 drag-and-drop
+  - Auto-scroll when dragging near screen edges
+  - Special handling for second-to-last position drops
 - **Offensive Player Management**: Add, edit, reorder players with positions (Handler/Cutter)
-- **Bench Management**: Separate active players and bench with visual indicators
-- **Point Tracking**: Track breaks, no-breaks, and detailed matchup history
+  - Inline name editing
+  - Position color coding (blue for handlers, green for cutters)
+  - Drag to reorder or move to bench
+- **Point Tracking**: Complete history with enhanced details
+  - Shows selected defenders for each point (above matchups)
+  - Break/no-break outcomes with timestamps
+  - No defender requirement - can save points with just selections
+  - Expandable point details with full matchup information
 - **Sortable Tables**: All data tables feature sortable columns with persistent preferences
+  - Click headers to sort by any column
+  - Sort preferences saved in localStorage
+  - Visual indicators for active sort direction
 
 ### Defensive Line Management
 - **Build Lines**: Create and save defensive line combinations for quick deployment
@@ -240,9 +260,11 @@ npx prisma db push
 ### Client → Server
 - `join-game` - Join a game room for real-time updates
 - `leave-game` - Leave current game room
+- `ping` - Heartbeat to maintain connection
 
 ### Server → Client
-- `game-updated` - Game details changed
+- `game-state` - Initial game state on join
+- `active-users` - List of connected users
 - `player-added` - Offensive player added
 - `player-updated` - Offensive player updated
 - `player-removed` - Offensive player removed
@@ -251,15 +273,14 @@ npx prisma db push
 - `available-defender-removed` - Potential matchup removed
 - `current-point-defender-updated` - Current defender assigned
 - `current-point-cleared` - All current assignments cleared
-- `point-created` - New point started
+- `point-created` - New point with selected defenders
 - `point-updated` - Point outcome recorded
 - `point-deleted` - Point removed
-- `selected-defenders-updated` - Selected defenders for game changed
-- `line-created` - New defensive line created
-- `line-updated` - Defensive line modified
-- `line-deleted` - Defensive line removed
-- `user-joined` - User joined game
-- `user-left` - User left game
+- `selected-defenders-updated` - Selected defenders for game changed (Call Your Line)
+- `matchup-updated` - Individual matchup changed
+- `user-joined` - User joined game room
+- `user-left` - User left game room
+- `pong` - Heartbeat response
 
 ## 🚢 Deployment to Railway
 
@@ -380,6 +401,23 @@ npm test
 # Run e2e tests (if configured)
 npm run test:e2e
 ```
+
+## 🚀 Recent Improvements
+
+### Performance & UX Enhancements
+- **Smoother Interactions**: Removed all disruptive popup warnings and alerts
+- **Better Drag-and-Drop**: Fixed reordering issues with sorted tables
+- **Enhanced Mobile**: Improved touch detection and haptic feedback
+- **Real-time Sync**: Fixed WebSocket room naming for reliable updates
+- **Visual Consistency**: Tile coloring works for bench players in matchups
+- **Point History**: Now displays selected defenders above matchups
+
+### Technical Improvements
+- **WebSocket Stability**: Consistent room naming (`game:${gameId}`)
+- **Drag-and-Drop Logic**: Handles visual order vs data order correctly
+- **State Management**: Better handling of selected defenders
+- **Database Efficiency**: Optimized queries for point creation
+- **Error Handling**: Silent validation for better UX
 
 ## 🐛 Troubleshooting
 
