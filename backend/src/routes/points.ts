@@ -18,6 +18,7 @@ const createPointSchema = z.object({
     result: z.enum(['SHUTDOWN', 'CONTAINED', 'SCORED_ON', 'NEUTRAL']).optional(),
     notes: z.string().optional(),
   })),
+  selectedDefenderIds: z.array(z.string()).optional(),
 });
 
 const updatePointSchema = z.object({
@@ -81,6 +82,19 @@ router.post('/', async (req: AuthRequest, res, next) => {
     
     const pointNumber = (lastPoint?.pointNumber || 0) + 1;
     
+    // Get all unique defenders (from matchups and selectedDefenderIds)
+    const allDefenderIds = new Set<string>();
+    
+    // Add defenders from matchups
+    data.matchups.forEach(m => {
+      if (m.defenderId) allDefenderIds.add(m.defenderId);
+    });
+    
+    // Add selected defenders
+    if (data.selectedDefenderIds) {
+      data.selectedDefenderIds.forEach(id => allDefenderIds.add(id));
+    }
+
     // Create point with matchups
     const point = await prisma.point.create({
       data: {
@@ -109,30 +123,28 @@ router.post('/', async (req: AuthRequest, res, next) => {
       },
     });
     
-    // Update defender statistics
-    for (const matchup of point.matchups) {
-      if (matchup.defenderId) {
-        await prisma.defenderStats.upsert({
-          where: {
-            defenderId_gameId: {
-              defenderId: matchup.defenderId,
-              gameId: data.gameId,
-            },
-          },
-          update: {
-            pointsPlayed: { increment: 1 },
-            ...(data.gotBreak && { breaks: { increment: 1 } }),
-            ...(!data.gotBreak && { noBreaks: { increment: 1 } }),
-          },
-          create: {
-            defenderId: matchup.defenderId,
+    // Update statistics for ALL defenders who played (selected defenders)
+    for (const defenderId of allDefenderIds) {
+      await prisma.defenderStats.upsert({
+        where: {
+          defenderId_gameId: {
+            defenderId,
             gameId: data.gameId,
-            pointsPlayed: 1,
-            breaks: data.gotBreak ? 1 : 0,
-            noBreaks: data.gotBreak ? 0 : 1,
           },
-        });
-      }
+        },
+        update: {
+          pointsPlayed: { increment: 1 },
+          ...(data.gotBreak && { breaks: { increment: 1 } }),
+          ...(!data.gotBreak && { noBreaks: { increment: 1 } }),
+        },
+        create: {
+          defenderId,
+          gameId: data.gameId,
+          pointsPlayed: 1,
+          breaks: data.gotBreak ? 1 : 0,
+          noBreaks: data.gotBreak ? 0 : 1,
+        },
+      });
     }
     
     await logActivity(

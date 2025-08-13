@@ -290,6 +290,7 @@ export const pointsApi = {
       result?: string;
       notes?: string;
     }>;
+    selectedDefenderIds?: string[];
   }) => {
     const response = await api.post('/points', data);
     return response.data;

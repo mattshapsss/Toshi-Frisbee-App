@@ -211,9 +211,6 @@ export default function CallYourLine({
                 style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
               >
                 <span className="block truncate">{defender.name}</span>
-                {defender.jerseyNumber && (
-                  <span className="text-xs opacity-75">#{defender.jerseyNumber}</span>
-                )}
                 {isInCurrentPoint && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
                 )}
@@ -227,64 +224,7 @@ export default function CallYourLine({
             Maximum 7 defenders selected. Deselect a defender to add another.
           </div>
         )}
-        
-        {!isPublic && selectedDefenders.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
-              <strong>Selected defenders statistics:</strong>
-            </div>
-            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              {(() => {
-                const stats = calculateSelectedDefendersStats(
-                  selectedDefenders,
-                  defenders,
-                  offensivePlayers
-                );
-                return (
-                  <>
-                    <div>
-                      <span className="text-gray-500">Points Played:</span>{' '}
-                      <span className="font-medium">{stats.totalPoints}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Breaks:</span>{' '}
-                      <span className="font-medium text-emerald-600">{stats.breaks}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">No Breaks:</span>{' '}
-                      <span className="font-medium text-rose-600">{stats.noBreaks}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Break %:</span>{' '}
-                      <span className="font-medium">
-                        {stats.totalPoints > 0 
-                          ? `${Math.round((stats.breaks / stats.totalPoints) * 100)}%`
-                          : 'N/A'
-                        }
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
-}
-
-function calculateSelectedDefendersStats(
-  selectedDefenderIds: string[],
-  defenders: any[],
-  offensivePlayers: any[]
-) {
-  // This would normally calculate from game points data
-  // For now, returning placeholder values
-  // In a real implementation, this would query the points/matchups data
-  return {
-    totalPoints: 0,
-    breaks: 0,
-    noBreaks: 0,
-  };
 }

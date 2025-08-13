@@ -274,7 +274,13 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const savePoint = (gotBreak: boolean) => {
     if (!game) return;
 
-    // Collect matchups from current point defenders
+    // Check if any defenders are selected
+    if (selectedDefenderIds.length === 0) {
+      alert('Please select defenders in "Call Your Line" first');
+      return;
+    }
+
+    // Collect matchups from current point defenders (can be empty)
     const matchups = game.offensivePlayers
       ?.filter((p: any) => !p.isBench && p.currentPointDefender)
       .map((p: any) => ({
@@ -282,20 +288,17 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         defenderId: p.currentPointDefender.defenderId
       })) || [];
 
-    if (matchups.length === 0) {
-      alert('Please assign defenders to at least one offensive player');
-      return;
-    }
-
     // Update game status to IN_PROGRESS if it's still in SETUP
     if (game.status === 'SETUP') {
       gamesApi.update(game.id, { status: 'IN_PROGRESS' });
     }
 
+    // Include selected defenders in the point data
     createPointMutation.mutate({
       gameId: game.id,
       gotBreak,
-      matchups
+      matchups,
+      selectedDefenderIds // Pass the selected defenders
     });
 
     setLastButtonClicked(gotBreak ? 'break' : 'nobreak');
@@ -1152,7 +1155,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
               <div className="flex space-x-2">
                 <button
                   onClick={() => savePoint(true)}
-                  disabled={!game?.offensivePlayers?.some((p: any) => !p.isBench && p.currentPointDefender)}
+                  disabled={selectedDefenderIds.length === 0}
                   className={`flex-1 px-4 py-2 text-white rounded-md font-medium text-sm transition-all disabled:opacity-50 ${
                     lastButtonClicked === 'break' 
                       ? 'bg-emerald-800 scale-95' 
@@ -1163,7 +1166,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 </button>
                 <button
                   onClick={() => savePoint(false)}
-                  disabled={!game?.offensivePlayers?.some((p: any) => !p.isBench && p.currentPointDefender)}
+                  disabled={selectedDefenderIds.length === 0}
                   className={`flex-1 px-4 py-2 text-white rounded-md font-medium text-sm transition-all disabled:opacity-50 ${
                     lastButtonClicked === 'nobreak' 
                       ? 'bg-rose-800 scale-95' 
