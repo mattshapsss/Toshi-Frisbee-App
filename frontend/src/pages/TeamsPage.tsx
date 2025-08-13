@@ -250,8 +250,8 @@ export default function TeamsPage() {
             </div>
           ) : (
             teams.map((team: any) => (
-              <div key={team.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between mb-4">
+              <div key={team.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="flex items-start justify-between mb-4 gap-2">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-800">{team.name}</h3>
                     {team.description && (
@@ -286,7 +286,7 @@ export default function TeamsPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2 flex-shrink-0 mr-2">
+                  <div className="flex gap-1 flex-shrink-0">
                     <button
                       onClick={() => navigate(`/teams/${team.id}/roster`)}
                       className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
