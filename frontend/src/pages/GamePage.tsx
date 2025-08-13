@@ -65,7 +65,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const addOffensivePlayerMutation = useMutation({
     mutationFn: (data: any) => gamesApi.addOffensivePlayer(game.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       setNewOffenderName('');
     }
   });
@@ -75,7 +75,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     mutationFn: ({ playerId, data }: any) => 
       gamesApi.updateOffensivePlayer(game.id, playerId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
     }
   });
 
@@ -84,7 +84,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     mutationFn: (playerId: string) => 
       gamesApi.deleteOffensivePlayer(game.id, playerId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
     }
   });
 
@@ -92,7 +92,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const createPointMutation = useMutation({
     mutationFn: (data: any) => pointsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       setCurrentPoint([]);
       setUnsavedChanges(false);
       setPointStartTime(null);
@@ -107,7 +107,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const deletePointMutation = useMutation({
     mutationFn: (pointId: string) => pointsApi.delete(pointId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
     }
   });
 
@@ -115,7 +115,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
   const updateGameStatusMutation = useMutation({
     mutationFn: (status: string) => gamesApi.update(game?.id || '', { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       alert('Game marked as complete!');
     }
   });
@@ -139,40 +139,40 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
       const handleGameUpdate = (data: any) => {
         console.log('Game update received:', data);
-        queryClient.invalidateQueries({ queryKey: ['game', game.id] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       };
 
       const handlePointUpdate = (data: any) => {
         console.log('Point update received:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       };
 
       const handleMatchupUpdate = (data: any) => {
         console.log('Matchup update received:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       };
 
       const handleAvailableDefenderAdded = (data: any) => {
         console.log('Available defender added:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       };
 
       const handleAvailableDefenderRemoved = (data: any) => {
         console.log('Available defender removed:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       };
 
       const handleCurrentPointDefenderUpdated = (data: any) => {
         console.log('Current point defender updated:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
-        if (data.playerId !== user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
+        if (data.userId !== user?.id) {
           setUnsavedChanges(true);
         }
       };
 
       const handleCurrentPointCleared = (data: any) => {
         console.log('Current point cleared:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
         setUnsavedChanges(false);
         setPointStartTime(null);
         setElapsedTime(0);
@@ -180,7 +180,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
 
       const handleOffensivePlayerUpdate = (data: any) => {
         console.log('Offensive player update received:', data);
-        queryClient.invalidateQueries({ queryKey: ['game'] });
+        queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       };
 
       // Register all event handlers
@@ -213,7 +213,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         socketManager.leaveGame();
       };
     }
-  }, [game?.id, isAuthenticated, queryClient]);
+  }, [game?.id, isAuthenticated, queryClient, gameId, shareCode, user?.id]);
 
   const addOffender = () => {
     if (newOffenderName.trim() && game) {
@@ -362,16 +362,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     try {
       await gamesApi.addAvailableDefender(game.id, playerId, defenderId);
-      queryClient.invalidateQueries({ queryKey: ['game'] });
-      
-      // Emit WebSocket event
-      if (socketManager.isConnected()) {
-        socketManager.emit('available-defender-add', {
-          gameId: game.id,
-          playerId,
-          defenderId
-        });
-      }
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
     } catch (error) {
       console.error('Error adding available defender:', error);
     }
@@ -382,21 +373,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     try {
       await gamesApi.removeAvailableDefender(game.id, playerId, defenderId);
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       
       // Also remove from current point if selected
       const player = game.offensivePlayers?.find((p: any) => p.id === playerId);
       if (player?.currentPointDefender?.defenderId === defenderId) {
         await handleRemoveCurrentPointDefender(playerId);
-      }
-      
-      // Emit WebSocket event
-      if (socketManager.isConnected()) {
-        socketManager.emit('available-defender-remove', {
-          gameId: game.id,
-          playerId,
-          defenderId
-        });
       }
     } catch (error) {
       console.error('Error removing available defender:', error);
@@ -418,21 +400,12 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       }
       
       await gamesApi.setCurrentPointDefender(game.id, playerId, defenderId);
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       setUnsavedChanges(true);
       
       // Start point timer if not started
       if (!pointStartTime) {
         setPointStartTime(new Date());
-      }
-      
-      // Emit WebSocket event
-      if (socketManager.isConnected()) {
-        socketManager.emit('current-point-defender-set', {
-          gameId: game.id,
-          playerId,
-          defenderId
-        });
       }
     } catch (error) {
       console.error('Error setting current point defender:', error);
@@ -444,17 +417,8 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     try {
       await gamesApi.setCurrentPointDefender(game.id, playerId, null);
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       setUnsavedChanges(true);
-      
-      // Emit WebSocket event
-      if (socketManager.isConnected()) {
-        socketManager.emit('current-point-defender-set', {
-          gameId: game.id,
-          playerId,
-          defenderId: null
-        });
-      }
     } catch (error) {
       console.error('Error removing current point defender:', error);
     }
@@ -465,17 +429,10 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     
     try {
       await gamesApi.clearCurrentPointDefenders(game.id);
-      queryClient.invalidateQueries({ queryKey: ['game'] });
+      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
       setUnsavedChanges(false);
       setPointStartTime(null);
       setElapsedTime(0);
-      
-      // Emit WebSocket event
-      if (socketManager.isConnected()) {
-        socketManager.emit('current-point-clear', {
-          gameId: game.id
-        });
-      }
     } catch (error) {
       console.error('Error clearing current point defenders:', error);
     }

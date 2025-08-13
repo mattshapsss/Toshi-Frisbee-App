@@ -15,7 +15,7 @@ class SocketManager {
       return;
     }
 
-    const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:5001';
+    const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:5001';
     
     this.socket = io(WS_URL, {
       auth: { token },
@@ -103,6 +103,43 @@ class SocketManager {
     // Heartbeat
     this.socket.on('pong', () => {
       this.emit('pong');
+    });
+
+    // New game update events
+    this.socket.on('player-added', (data) => {
+      this.emit('player-added', data);
+    });
+
+    this.socket.on('player-updated', (data) => {
+      this.emit('player-updated', data);
+    });
+
+    this.socket.on('player-removed', (data) => {
+      this.emit('player-removed', data);
+    });
+
+    this.socket.on('point-created', (data) => {
+      this.emit('point-created', data);
+    });
+
+    this.socket.on('point-deleted', (data) => {
+      this.emit('point-deleted', data);
+    });
+
+    this.socket.on('available-defender-added', (data) => {
+      this.emit('available-defender-added', data);
+    });
+
+    this.socket.on('available-defender-removed', (data) => {
+      this.emit('available-defender-removed', data);
+    });
+
+    this.socket.on('current-point-defender-updated', (data) => {
+      this.emit('current-point-defender-updated', data);
+    });
+
+    this.socket.on('current-point-cleared', (data) => {
+      this.emit('current-point-cleared', data);
     });
 
     // Start heartbeat
@@ -206,6 +243,15 @@ class SocketManager {
 
   getCurrentGameId(): string | null {
     return this.gameId;
+  }
+
+  // Emit custom events to the server
+  emitToServer(event: string, data: any) {
+    if (!this.socket?.connected) {
+      console.warn(`Cannot emit ${event} - socket not connected`);
+      return;
+    }
+    this.socket.emit(event, data);
   }
 }
 
