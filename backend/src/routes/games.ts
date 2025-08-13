@@ -378,12 +378,14 @@ router.put('/:gameId/offensive-players/reorder', async (req: AuthRequest, res, n
     });
     
     // Emit socket event for real-time updates
-    console.log(`Emitting players-reordered event for game ${req.params.gameId}`);
-    io.to(`game:${req.params.gameId}`).emit('players-reordered', {
-      players,
-      userId: req.user!.id,
-      timestamp: new Date().toISOString(),
-    });
+    // Emit with a slight delay to ensure clients are ready
+    setTimeout(() => {
+      io.to(`game:${req.params.gameId}`).emit('players-reordered', {
+        players,
+        userId: req.user!.id,
+        timestamp: new Date().toISOString(),
+      });
+    }, 50);
     
     res.json(players);
   } catch (error) {

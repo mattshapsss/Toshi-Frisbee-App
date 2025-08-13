@@ -45,6 +45,9 @@ const authLimiter = rateLimit({
   message: 'Too many authentication attempts',
 });
 
+// Trust proxy for Railway/production environments
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
 app.use(cors({
