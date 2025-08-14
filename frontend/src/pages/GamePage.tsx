@@ -1017,7 +1017,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
       stats[defender.id] = {
         id: defender.id,
         name: defender.name,
-        jerseyNumber: defender.jerseyNumber,
         pointsPlayed: 0,
         breaks: 0,
         noBreaks: 0,
@@ -1797,7 +1796,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Player</th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">#</th>
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Points</th>
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Breaks</th>
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">No Breaks</th>
@@ -1808,7 +1806,7 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {getPlayingTimeStats().length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
+                      <td colSpan={6} className="px-3 py-8 text-center text-gray-500">
                         No statistics yet. Save points to track player performance.
                       </td>
                     </tr>
@@ -1820,9 +1818,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                       return (
                         <tr key={player.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-3 py-2 font-medium text-gray-900">{player.name}</td>
-                          <td className="px-3 py-2 text-center text-gray-600">
-                            {player.jerseyNumber || '-'}
-                          </td>
                           <td className="px-3 py-2 text-center">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white" 
                                   style={{ backgroundColor: '#3E8EDE' }}>
