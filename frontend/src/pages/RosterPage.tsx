@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Minus, ArrowLeft, Users, BarChart3 } from 'lucide-react';
-import { defendersApi, teamsApi } from '../lib/api';
+import { defendersApi, teamsApi, gamesApi, pointsApi } from '../lib/api';
 import BuildLines from '../components/BuildLines';
 import SortableTableHeader, { useSortableData } from '../components/SortableTableHeader';
 
@@ -38,6 +38,31 @@ export default function RosterPage() {
     queryFn: () => defendersApi.listByTeam(teamId!),
     enabled: !!teamId
   });
+
+  // Fetch all games for this team to calculate team-level stats
+  const { data: teamGames = [] } = useQuery({
+    queryKey: ['games', teamId],
+    queryFn: () => gamesApi.list({ teamId }),
+    enabled: !!teamId
+  });
+
+  // Calculate team-level statistics
+  const calculateTeamStats = () => {
+    let totalPoints = 0;
+    let totalBreaks = 0;
+    
+    // Count unique points across all games
+    teamGames.forEach((game: any) => {
+      if (game.points) {
+        totalPoints += game.points.length;
+        totalBreaks += game.points.filter((p: any) => p.gotBreak).length;
+      }
+    });
+    
+    return { totalPoints, totalBreaks };
+  };
+
+  const teamStats = calculateTeamStats();
 
   // Create defender mutation
   const createDefenderMutation = useMutation({
@@ -475,17 +500,13 @@ export default function RosterPage() {
               </div>
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-800">
-                  {defenders.reduce((sum: number, d: any) => 
-                    sum + (d.statistics || []).reduce((s: number, stat: any) => s + (stat.pointsPlayed || 0), 0)
-                  , 0)}
+                  {teamStats.totalPoints}
                 </div>
                 <div className="text-sm text-gray-600">Total Points Played</div>
               </div>
               <div className="text-center p-4 bg-emerald-50 rounded-lg">
                 <div className="text-2xl font-bold text-emerald-800">
-                  {defenders.reduce((sum: number, d: any) => 
-                    sum + (d.statistics || []).reduce((s: number, stat: any) => s + (stat.breaks || 0), 0)
-                  , 0)}
+                  {teamStats.totalBreaks}
                 </div>
                 <div className="text-sm text-gray-600">Total Breaks</div>
               </div>
