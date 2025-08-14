@@ -64,9 +64,15 @@ router.get('/', async (req: AuthRequest, res, next) => {
       },
       include: {
         team: true,
+        points: {
+          select: {
+            id: true,
+            gotBreak: true,
+            pointNumber: true,
+          },
+        },
         _count: {
           select: {
-            points: true,
             offensivePlayers: true,
           },
         },
