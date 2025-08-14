@@ -11,10 +11,14 @@ export default function RosterPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [newDefenderName, setNewDefenderName] = useState('');
-  const [newDefenderNumber, setNewDefenderNumber] = useState('');
+  const [newDefenderPosition, setNewDefenderPosition] = useState<'HANDLER' | 'HYBRID' | 'CUTTER'>('HYBRID');
   const [bulkAdd, setBulkAdd] = useState(false);
   const [bulkNames, setBulkNames] = useState('');
+  const [bulkPosition, setBulkPosition] = useState<'HANDLER' | 'HYBRID' | 'CUTTER'>('HYBRID');
   const [isMounted, setIsMounted] = useState(false);
+  const [editingDefenderId, setEditingDefenderId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingPosition, setEditingPosition] = useState<'HANDLER' | 'HYBRID' | 'CUTTER'>('HYBRID');
 
   // Ensure component is mounted on client side
   useEffect(() => {
@@ -41,17 +45,29 @@ export default function RosterPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['defenders', teamId] });
       setNewDefenderName('');
-      setNewDefenderNumber('');
+      setNewDefenderPosition('HYBRID');
+    }
+  });
+
+  // Update defender mutation
+  const updateDefenderMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => defendersApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['defenders', teamId] });
+      setEditingDefenderId(null);
+      setEditingName('');
+      setEditingPosition('HYBRID');
     }
   });
 
   // Bulk create mutation
   const bulkCreateMutation = useMutation({
-    mutationFn: (names: string[]) => 
-      defendersApi.bulkCreate(teamId!, names.map(name => ({ name }))),
+    mutationFn: ({ names, position }: { names: string[]; position: 'HANDLER' | 'HYBRID' | 'CUTTER' }) => 
+      defendersApi.bulkCreate(teamId!, names.map(name => ({ name, position }))),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['defenders', teamId] });
       setBulkNames('');
+      setBulkPosition('HYBRID');
       setBulkAdd(false);
     }
   });
@@ -71,21 +87,51 @@ export default function RosterPage() {
   const handleAddDefender = () => {
     if (!newDefenderName.trim() || !teamId) return;
     
+    // Truncate name to 10 characters for storage
+    const truncatedName = newDefenderName.trim().slice(0, 10);
+    
     createDefenderMutation.mutate({
       teamId,
-      name: newDefenderName.trim(),
-      jerseyNumber: newDefenderNumber.trim() || undefined
+      name: truncatedName,
+      position: newDefenderPosition
     });
   };
 
   const handleBulkAdd = () => {
     const names = bulkNames
       .split('\n')
-      .map(n => n.trim())
+      .map(n => n.trim().slice(0, 10)) // Truncate each name to 10 characters
       .filter(n => n.length > 0);
     
     if (names.length === 0) return;
-    bulkCreateMutation.mutate(names);
+    bulkCreateMutation.mutate({ names, position: bulkPosition });
+  };
+
+  const handleEditDefender = (defender: any) => {
+    setEditingDefenderId(defender.id);
+    setEditingName(defender.name);
+    setEditingPosition(defender.position || 'HYBRID');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingDefenderId || !editingName.trim()) return;
+    
+    // Truncate name to 10 characters
+    const truncatedName = editingName.trim().slice(0, 10);
+    
+    updateDefenderMutation.mutate({
+      id: editingDefenderId,
+      data: {
+        name: truncatedName,
+        position: editingPosition
+      }
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDefenderId(null);
+    setEditingName('');
+    setEditingPosition('HYBRID');
   };
 
   const calculateStats = (defender: any) => {
@@ -155,19 +201,30 @@ export default function RosterPage() {
               <textarea
                 value={bulkNames}
                 onChange={(e) => setBulkNames(e.target.value)}
-                placeholder="Enter defender names (one per line)"
+                placeholder="Enter defender names (one per line, max 10 characters each)"
                 rows={5}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <button
-                onClick={handleBulkAdd}
-                disabled={!bulkNames.trim() || bulkCreateMutation.isPending}
-                className="w-full px-6 py-3 text-white rounded-lg font-medium disabled:bg-gray-300 hover:opacity-90"
-                style={{ backgroundColor: '#3E8EDE' }}
-              >
-                <Plus className="h-5 w-5 mr-2 inline" />
-                Add All Defenders
-              </button>
+              <div className="flex gap-3">
+                <select
+                  value={bulkPosition}
+                  onChange={(e) => setBulkPosition(e.target.value as 'HANDLER' | 'HYBRID' | 'CUTTER')}
+                  className="w-48 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="HANDLER">Handler</option>
+                  <option value="HYBRID">Hybrid</option>
+                  <option value="CUTTER">Cutter</option>
+                </select>
+                <button
+                  onClick={handleBulkAdd}
+                  disabled={!bulkNames.trim() || bulkCreateMutation.isPending}
+                  className="flex-1 px-6 py-3 text-white rounded-lg font-medium disabled:bg-gray-300 hover:opacity-90"
+                  style={{ backgroundColor: '#3E8EDE' }}
+                >
+                  <Plus className="h-5 w-5 mr-2 inline" />
+                  Add All Defenders
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-3">
@@ -175,18 +232,20 @@ export default function RosterPage() {
                 type="text"
                 value={newDefenderName}
                 onChange={(e) => setNewDefenderName(e.target.value)}
-                placeholder="Defender name"
+                placeholder="Defender name (max 10 chars)"
+                maxLength={10}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddDefender()}
               />
-              <input
-                type="text"
-                value={newDefenderNumber}
-                onChange={(e) => setNewDefenderNumber(e.target.value)}
-                placeholder="Jersey # (optional)"
+              <select
+                value={newDefenderPosition}
+                onChange={(e) => setNewDefenderPosition(e.target.value as 'HANDLER' | 'HYBRID' | 'CUTTER')}
                 className="w-48 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddDefender()}
-              />
+              >
+                <option value="HANDLER">Handler</option>
+                <option value="HYBRID">Hybrid</option>
+                <option value="CUTTER">Cutter</option>
+              </select>
               <button
                 onClick={handleAddDefender}
                 disabled={!newDefenderName.trim() || createDefenderMutation.isPending}
@@ -232,8 +291,8 @@ export default function RosterPage() {
                       className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                     />
                     <SortableTableHeader
-                      label="Jersey"
-                      sortKey="jerseyNumber"
+                      label="Position"
+                      sortKey="position"
                       currentSortKey={sortConfig.key}
                       sortDirection={sortConfig.direction}
                       onSort={handleSort}
@@ -268,16 +327,79 @@ export default function RosterPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedDefenders.map((defender: any, index: number) => {
+                    const isEditing = editingDefenderId === defender.id;
+                    const formatPosition = (pos: string) => {
+                      return pos === 'HANDLER' ? 'Handler' : pos === 'CUTTER' ? 'Cutter' : 'Hybrid';
+                    };
+                    
                     return (
                       <tr key={defender.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-3 py-3 text-sm font-medium text-gray-900">{defender.name}</td>
-                        <td className="px-3 py-3 text-center">
-                          {defender.jerseyNumber ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              #{defender.jerseyNumber}
-                            </span>
+                        <td className="px-3 py-3 text-sm font-medium text-gray-900">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                maxLength={10}
+                                className="px-2 py-1 border border-blue-400 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                autoFocus
+                              />
+                              <button
+                                onClick={handleSaveEdit}
+                                className="p-1 text-green-600 hover:text-green-800"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="p-1 text-red-600 hover:text-red-800"
+                              >
+                                ✗
+                              </button>
+                            </div>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span 
+                              className="cursor-pointer hover:text-blue-600"
+                              onClick={() => handleEditDefender(defender)}
+                              title="Click to edit"
+                            >
+                              {defender.name}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {isEditing ? (
+                            <select
+                              value={editingPosition}
+                              onChange={(e) => setEditingPosition(e.target.value as 'HANDLER' | 'HYBRID' | 'CUTTER')}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none"
+                            >
+                              <option value="HANDLER">Handler</option>
+                              <option value="HYBRID">Hybrid</option>
+                              <option value="CUTTER">Cutter</option>
+                            </select>
+                          ) : (
+                            <select
+                              value={defender.position || 'HYBRID'}
+                              onChange={(e) => {
+                                updateDefenderMutation.mutate({
+                                  id: defender.id,
+                                  data: { position: e.target.value }
+                                });
+                              }}
+                              className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${
+                                defender.position === 'HANDLER' 
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : defender.position === 'CUTTER'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              <option value="HANDLER">Handler</option>
+                              <option value="HYBRID">Hybrid</option>
+                              <option value="CUTTER">Cutter</option>
+                            </select>
                           )}
                         </td>
                         <td className="px-3 py-3 text-center">

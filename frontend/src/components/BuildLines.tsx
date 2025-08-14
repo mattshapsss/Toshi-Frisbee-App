@@ -126,10 +126,12 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
     }
   };
 
-  // Sort defenders alphabetically
-  const sortedDefenders = [...defenders].sort((a, b) => 
-    a.name.localeCompare(b.name)
-  );
+  // Group defenders by position and sort alphabetically within each group
+  const groupedDefenders = {
+    HANDLER: defenders.filter((d: any) => d.position === 'HANDLER').sort((a: any, b: any) => a.name.localeCompare(b.name)),
+    HYBRID: defenders.filter((d: any) => d.position === 'HYBRID' || !d.position).sort((a: any, b: any) => a.name.localeCompare(b.name)),
+    CUTTER: defenders.filter((d: any) => d.position === 'CUTTER').sort((a: any, b: any) => a.name.localeCompare(b.name))
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -155,27 +157,87 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {sortedDefenders.map((defender) => {
-              const isSelected = selectedDefenders.includes(defender.id);
-              return (
-                <button
-                  key={defender.id}
-                  onClick={() => toggleDefender(defender.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                    isSelected
-                      ? 'bg-blue-500 text-white hover:bg-blue-600'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                  style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
-                >
-                  {defender.name}
-                  {defender.jerseyNumber && (
-                    <span className="text-xs ml-1 opacity-75">#{defender.jerseyNumber}</span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Handlers Column */}
+            <div>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Handlers</h4>
+              <div className="space-y-1">
+                {groupedDefenders.HANDLER.map((defender: any) => {
+                  const isSelected = selectedDefenders.includes(defender.id);
+                  return (
+                    <button
+                      key={defender.id}
+                      onClick={() => toggleDefender(defender.id)}
+                      className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                        isSelected
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                    >
+                      {defender.name}
+                    </button>
+                  );
+                })}
+                {groupedDefenders.HANDLER.length === 0 && (
+                  <div className="text-xs text-gray-400 italic">No handlers</div>
+                )}
+              </div>
+            </div>
+
+            {/* Hybrids Column */}
+            <div>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Hybrids</h4>
+              <div className="space-y-1">
+                {groupedDefenders.HYBRID.map((defender: any) => {
+                  const isSelected = selectedDefenders.includes(defender.id);
+                  return (
+                    <button
+                      key={defender.id}
+                      onClick={() => toggleDefender(defender.id)}
+                      className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                        isSelected
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                    >
+                      {defender.name}
+                    </button>
+                  );
+                })}
+                {groupedDefenders.HYBRID.length === 0 && (
+                  <div className="text-xs text-gray-400 italic">No hybrids</div>
+                )}
+              </div>
+            </div>
+
+            {/* Cutters Column */}
+            <div>
+              <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Cutters</h4>
+              <div className="space-y-1">
+                {groupedDefenders.CUTTER.map((defender: any) => {
+                  const isSelected = selectedDefenders.includes(defender.id);
+                  return (
+                    <button
+                      key={defender.id}
+                      onClick={() => toggleDefender(defender.id)}
+                      className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                        isSelected
+                          ? 'bg-blue-500 text-white hover:bg-blue-600'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                    >
+                      {defender.name}
+                    </button>
+                  );
+                })}
+                {groupedDefenders.CUTTER.length === 0 && (
+                  <div className="text-xs text-gray-400 italic">No cutters</div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between">
@@ -211,24 +273,78 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {sortedDefenders.map((defender) => {
-                      const isSelected = editingLineDefenders.includes(defender.id);
-                      return (
-                        <button
-                          key={defender.id}
-                          onClick={() => toggleDefender(defender.id, true)}
-                          className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                            isSelected
-                              ? 'bg-blue-500 text-white hover:bg-blue-600'
-                              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                          style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
-                        >
-                          {defender.name}
-                        </button>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Handlers Column */}
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Handlers</h4>
+                      <div className="space-y-1">
+                        {groupedDefenders.HANDLER.map((defender: any) => {
+                          const isSelected = editingLineDefenders.includes(defender.id);
+                          return (
+                            <button
+                              key={defender.id}
+                              onClick={() => toggleDefender(defender.id, true)}
+                              className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                                isSelected
+                                  ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                              style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                            >
+                              {defender.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Hybrids Column */}
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Hybrids</h4>
+                      <div className="space-y-1">
+                        {groupedDefenders.HYBRID.map((defender: any) => {
+                          const isSelected = editingLineDefenders.includes(defender.id);
+                          return (
+                            <button
+                              key={defender.id}
+                              onClick={() => toggleDefender(defender.id, true)}
+                              className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                                isSelected
+                                  ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                              style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                            >
+                              {defender.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Cutters Column */}
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Cutters</h4>
+                      <div className="space-y-1">
+                        {groupedDefenders.CUTTER.map((defender: any) => {
+                          const isSelected = editingLineDefenders.includes(defender.id);
+                          return (
+                            <button
+                              key={defender.id}
+                              onClick={() => toggleDefender(defender.id, true)}
+                              className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                                isSelected
+                                  ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                              style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                            >
+                              {defender.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -266,9 +382,6 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                           style={{ backgroundColor: '#3E8EDE' }}
                         >
                           {ld.defender.name}
-                          {ld.defender.jerseyNumber && (
-                            <span className="ml-1 opacity-75">#{ld.defender.jerseyNumber}</span>
-                          )}
                         </span>
                       ))}
                     </div>

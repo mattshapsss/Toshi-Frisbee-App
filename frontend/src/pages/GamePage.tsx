@@ -927,8 +927,14 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     if (!game) return;
     
     try {
+      // Clear current point defenders
       await gamesApi.clearCurrentPointDefenders(game.id);
+      
+      // Also clear selected defenders in Call Your Line
+      await selectedDefendersApi.updateByGame(game.id, []);
+      
       queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
+      queryClient.invalidateQueries({ queryKey: ['selectedDefenders', game.id] });
       setUnsavedChanges(false);
       setPointStartTime(null);
       setElapsedTime(0);

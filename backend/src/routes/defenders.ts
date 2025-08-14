@@ -8,15 +8,13 @@ const router = Router();
 const createDefenderSchema = z.object({
   teamId: z.string(),
   name: z.string().min(1).max(100),
-  jerseyNumber: z.string().optional(),
-  position: z.string().optional(),
+  position: z.enum(['HANDLER', 'HYBRID', 'CUTTER']).default('HYBRID'),
   notes: z.string().optional(),
 });
 
 const updateDefenderSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  jerseyNumber: z.string().optional(),
-  position: z.string().optional(),
+  position: z.enum(['HANDLER', 'HYBRID', 'CUTTER']).optional(),
   notes: z.string().optional(),
   active: z.boolean().optional(),
 });
@@ -25,8 +23,7 @@ const bulkCreateDefendersSchema = z.object({
   teamId: z.string(),
   defenders: z.array(z.object({
     name: z.string().min(1).max(100),
-    jerseyNumber: z.string().optional(),
-    position: z.string().optional(),
+    position: z.enum(['HANDLER', 'HYBRID', 'CUTTER']).default('HYBRID'),
   })),
 });
 
@@ -77,8 +74,7 @@ router.post('/', async (req: AuthRequest, res, next) => {
       data: {
         teamId: data.teamId,
         name: data.name,
-        jerseyNumber: data.jerseyNumber,
-        position: data.position,
+        position: data.position || 'HYBRID',
         notes: data.notes,
       },
     });
@@ -112,8 +108,7 @@ router.post('/bulk', async (req: AuthRequest, res, next) => {
       data: data.defenders.map(d => ({
         teamId: data.teamId,
         name: d.name,
-        jerseyNumber: d.jerseyNumber,
-        position: d.position,
+        position: d.position || 'HYBRID',
       })),
     });
     

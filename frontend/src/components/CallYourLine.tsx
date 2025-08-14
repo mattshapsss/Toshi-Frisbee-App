@@ -116,10 +116,12 @@ export default function CallYourLine({
     setShowLineDropdown(false);
   };
 
-  // Sort defenders alphabetically
-  const sortedDefenders = [...defenders].sort((a, b) => 
-    a.name.localeCompare(b.name)
-  );
+  // Group defenders by position and sort alphabetically within each group
+  const groupedDefenders = {
+    HANDLER: defenders.filter((d: any) => d.position === 'HANDLER').sort((a: any, b: any) => a.name.localeCompare(b.name)),
+    HYBRID: defenders.filter((d: any) => d.position === 'HYBRID' || !d.position).sort((a: any, b: any) => a.name.localeCompare(b.name)),
+    CUTTER: defenders.filter((d: any) => d.position === 'CUTTER').sort((a: any, b: any) => a.name.localeCompare(b.name))
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -162,38 +164,124 @@ export default function CallYourLine({
       </div>
       
       <div className="p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2">
-          {sortedDefenders.map((defender) => {
-            const isSelected = selectedDefenders.includes(defender.id);
-            const isInCurrentPoint = offensivePlayers.some(
-              player => player.currentPointDefender?.defenderId === defender.id
-            );
-            
-            return (
-              <button
-                key={defender.id}
-                onClick={() => handleToggleDefender(defender.id)}
-                disabled={isPublic}
-                className={`
-                  relative px-3 py-2 rounded-lg text-sm font-medium transition-all
-                  ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
-                  ${isSelected 
-                    ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                  }
-                  ${isInCurrentPoint && isSelected ? 'ring-2 ring-emerald-500' : ''}
-                `}
-                style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
-              >
-                <span className="block truncate">{defender.name}</span>
-                {isInCurrentPoint && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
-                )}
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Handlers Column */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3">Handlers</h4>
+            <div className="space-y-2">
+              {groupedDefenders.HANDLER.map((defender: any) => {
+                const isSelected = selectedDefenders.includes(defender.id);
+                const isInCurrentPoint = offensivePlayers.some(
+                  (player: any) => player.currentPointDefender?.defenderId === defender.id
+                );
+                
+                return (
+                  <button
+                    key={defender.id}
+                    onClick={() => handleToggleDefender(defender.id)}
+                    disabled={isPublic}
+                    className={`
+                      relative w-full px-3 py-2 rounded-lg text-sm font-medium transition-all text-left
+                      ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
+                      ${isSelected 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                      }
+                      ${isInCurrentPoint && isSelected ? 'ring-2 ring-emerald-500' : ''}
+                    `}
+                    style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                  >
+                    <span className="block truncate">{defender.name}</span>
+                    {isInCurrentPoint && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                    )}
+                  </button>
+                );
+              })}
+              {groupedDefenders.HANDLER.length === 0 && (
+                <div className="text-xs text-gray-400 italic">No handlers</div>
+              )}
+            </div>
+          </div>
+
+          {/* Hybrids Column */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3">Hybrids</h4>
+            <div className="space-y-2">
+              {groupedDefenders.HYBRID.map((defender: any) => {
+                const isSelected = selectedDefenders.includes(defender.id);
+                const isInCurrentPoint = offensivePlayers.some(
+                  (player: any) => player.currentPointDefender?.defenderId === defender.id
+                );
+                
+                return (
+                  <button
+                    key={defender.id}
+                    onClick={() => handleToggleDefender(defender.id)}
+                    disabled={isPublic}
+                    className={`
+                      relative w-full px-3 py-2 rounded-lg text-sm font-medium transition-all text-left
+                      ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
+                      ${isSelected 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                      }
+                      ${isInCurrentPoint && isSelected ? 'ring-2 ring-emerald-500' : ''}
+                    `}
+                    style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                  >
+                    <span className="block truncate">{defender.name}</span>
+                    {isInCurrentPoint && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                    )}
+                  </button>
+                );
+              })}
+              {groupedDefenders.HYBRID.length === 0 && (
+                <div className="text-xs text-gray-400 italic">No hybrids</div>
+              )}
+            </div>
+          </div>
+
+          {/* Cutters Column */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3">Cutters</h4>
+            <div className="space-y-2">
+              {groupedDefenders.CUTTER.map((defender: any) => {
+                const isSelected = selectedDefenders.includes(defender.id);
+                const isInCurrentPoint = offensivePlayers.some(
+                  (player: any) => player.currentPointDefender?.defenderId === defender.id
+                );
+                
+                return (
+                  <button
+                    key={defender.id}
+                    onClick={() => handleToggleDefender(defender.id)}
+                    disabled={isPublic}
+                    className={`
+                      relative w-full px-3 py-2 rounded-lg text-sm font-medium transition-all text-left
+                      ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
+                      ${isSelected 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                      }
+                      ${isInCurrentPoint && isSelected ? 'ring-2 ring-emerald-500' : ''}
+                    `}
+                    style={isSelected ? { backgroundColor: '#3E8EDE' } : {}}
+                  >
+                    <span className="block truncate">{defender.name}</span>
+                    {isInCurrentPoint && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                    )}
+                  </button>
+                );
+              })}
+              {groupedDefenders.CUTTER.length === 0 && (
+                <div className="text-xs text-gray-400 italic">No cutters</div>
+              )}
+            </div>
+          </div>
         </div>
-        
       </div>
     </div>
   );

@@ -64,12 +64,17 @@ enum TeamRole {
   VIEWER
 }
 
+enum DefenderPosition {
+  HANDLER
+  HYBRID
+  CUTTER
+}
+
 model Defender {
   id             String         @id @default(cuid())
   name           String
   teamId         String
-  jerseyNumber   String?
-  position       String?
+  position       DefenderPosition @default(HYBRID)
   notes          String?
   active         Boolean        @default(true)
   createdAt      DateTime       @default(now())
