@@ -220,6 +220,7 @@ router.get('/:defenderId/stats', async (req: AuthRequest, res, next) => {
                 id: true,
                 gotBreak: true,
                 gameId: true,
+                selectedDefenderIds: true,
               },
             },
           },
@@ -231,14 +232,29 @@ router.get('/:defenderId/stats', async (req: AuthRequest, res, next) => {
       return res.status(404).json({ error: 'Defender not found' });
     }
     
-    // Calculate statistics
+    // Get all points where this defender was selected (Call Your Line)
+    const pointsQuery = gameId 
+      ? { selectedDefenderIds: { has: req.params.defenderId }, gameId: gameId as string }
+      : { selectedDefenderIds: { has: req.params.defenderId } };
+    
+    const pointsPlayed = await prisma.point.findMany({
+      where: pointsQuery,
+      select: {
+        id: true,
+        gotBreak: true,
+        gameId: true,
+      },
+    });
+    
+    // Calculate statistics based on selectedDefenderIds (Call Your Line)
     const stats = {
-      totalGames: new Set(defender.matchups.map(m => m.point.gameId)).size,
-      totalPoints: defender.matchups.length,
-      totalBreaks: defender.matchups.filter(m => m.point.gotBreak).length,
-      breakPercentage: defender.matchups.length > 0 
-        ? Math.round((defender.matchups.filter(m => m.point.gotBreak).length / defender.matchups.length) * 100)
+      totalGames: new Set(pointsPlayed.map(p => p.gameId)).size,
+      totalPoints: pointsPlayed.length,
+      totalBreaks: pointsPlayed.filter(p => p.gotBreak).length,
+      breakPercentage: pointsPlayed.length > 0 
+        ? Math.round((pointsPlayed.filter(p => p.gotBreak).length / pointsPlayed.length) * 100)
         : 0,
+      // Matchup results still come from actual matchups (Current Point assignments)
       matchupResults: defender.matchups.reduce((acc, m) => {
         if (m.result) {
           acc[m.result] = (acc[m.result] || 0) + 1;

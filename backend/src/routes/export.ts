@@ -63,7 +63,7 @@ router.get('/game/:gameId/json', authenticateToken, async (req: AuthRequest, res
       defenderStats: {} as any
     };
 
-    // Calculate defender statistics
+    // Calculate defender statistics based on selectedDefenderIds (Call Your Line)
     game.team?.defenders.forEach(defender => {
       stats.defenderStats[defender.id] = {
         name: defender.name,
@@ -74,13 +74,15 @@ router.get('/game/:gameId/json', authenticateToken, async (req: AuthRequest, res
     });
 
     game.points.forEach(point => {
-      point.matchups.forEach(matchup => {
-        if (matchup.defenderId && stats.defenderStats[matchup.defenderId]) {
-          stats.defenderStats[matchup.defenderId].pointsPlayed++;
+      // Use selectedDefenderIds to determine who played
+      const selectedDefenders = (point as any).selectedDefenderIds || [];
+      selectedDefenders.forEach((defenderId: string) => {
+        if (stats.defenderStats[defenderId]) {
+          stats.defenderStats[defenderId].pointsPlayed++;
           if (point.gotBreak) {
-            stats.defenderStats[matchup.defenderId].breaks++;
+            stats.defenderStats[defenderId].breaks++;
           } else {
-            stats.defenderStats[matchup.defenderId].noBreaks++;
+            stats.defenderStats[defenderId].noBreaks++;
           }
         }
       });
@@ -318,12 +320,14 @@ router.get('/team/:teamId/stats', authenticateToken, async (req: AuthRequest, re
 
     team.games.forEach(game => {
       game.points.forEach(point => {
-        point.matchups.forEach(matchup => {
-          if (matchup.defenderId && defenderStats[matchup.defenderId]) {
-            defenderStats[matchup.defenderId].totalPoints++;
-            defenderStats[matchup.defenderId].gamesPlayed.add(game.id);
+        // Use selectedDefenderIds (Call Your Line) for statistics
+        const selectedDefenders = (point as any).selectedDefenderIds || [];
+        selectedDefenders.forEach((defenderId: string) => {
+          if (defenderStats[defenderId]) {
+            defenderStats[defenderId].totalPoints++;
+            defenderStats[defenderId].gamesPlayed.add(game.id);
             if (point.gotBreak) {
-              defenderStats[matchup.defenderId].totalBreaks++;
+              defenderStats[defenderId].totalBreaks++;
             }
           }
         });

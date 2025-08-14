@@ -1027,18 +1027,20 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
     });
 
     game.points.forEach((point: any) => {
-      point.matchups?.forEach((matchup: any) => {
-        if (matchup.defender && stats[matchup.defender.id]) {
-          stats[matchup.defender.id].pointsPlayed++;
+      // Use selectedDefenderIds (Call Your Line) for statistics
+      const selectedDefenders = point.selectedDefenderIds || [];
+      selectedDefenders.forEach((defenderId: string) => {
+        if (stats[defenderId]) {
+          stats[defenderId].pointsPlayed++;
           if (point.gotBreak) {
-            stats[matchup.defender.id].breaks++;
+            stats[defenderId].breaks++;
           } else {
-            stats[matchup.defender.id].noBreaks++;
+            stats[defenderId].noBreaks++;
           }
           // Track playing time if available
           if (point.completedAt && point.startedAt) {
             const duration = new Date(point.completedAt).getTime() - new Date(point.startedAt).getTime();
-            stats[matchup.defender.id].playingTime += duration;
+            stats[defenderId].playingTime += duration;
           }
         }
       });

@@ -135,8 +135,9 @@ export default function RosterPage() {
   };
 
   const calculateStats = (defender: any) => {
-    const total = defender._count?.matchups || 0;
+    // Use DefenderStats based on selectedDefenderIds (Call Your Line)
     const stats = defender.statistics?.[0];
+    const total = stats?.pointsPlayed || 0;
     const breaks = stats?.breaks || 0;
     const breakPercent = total > 0 ? Math.round((breaks / total) * 100) : 0;
     
@@ -474,7 +475,7 @@ export default function RosterPage() {
               </div>
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-800">
-                  {defenders.reduce((sum: number, d: any) => sum + (d._count?.matchups || 0), 0)}
+                  {defenders.reduce((sum: number, d: any) => sum + (d.statistics?.[0]?.pointsPlayed || 0), 0)}
                 </div>
                 <div className="text-sm text-gray-600">Total Points Played</div>
               </div>

@@ -82,18 +82,9 @@ router.post('/', async (req: AuthRequest, res, next) => {
     
     const pointNumber = (lastPoint?.pointNumber || 0) + 1;
     
-    // Get all unique defenders (from matchups and selectedDefenderIds)
-    const allDefenderIds = new Set<string>();
-    
-    // Add defenders from matchups
-    data.matchups.forEach(m => {
-      if (m.defenderId) allDefenderIds.add(m.defenderId);
-    });
-    
-    // Add selected defenders
-    if (data.selectedDefenderIds) {
-      data.selectedDefenderIds.forEach(id => allDefenderIds.add(id));
-    }
+    // Stats should be based on selectedDefenderIds (Call Your Line selections)
+    // NOT on matchups (Current Point assignments)
+    const defendersToCredit = data.selectedDefenderIds || []
 
     // Create point with matchups
     const point = await prisma.point.create({
@@ -124,8 +115,8 @@ router.post('/', async (req: AuthRequest, res, next) => {
       },
     });
     
-    // Update statistics for ALL defenders who played (selected defenders)
-    for (const defenderId of allDefenderIds) {
+    // Update statistics for defenders who were selected in Call Your Line
+    for (const defenderId of defendersToCredit) {
       await prisma.defenderStats.upsert({
         where: {
           defenderId_gameId: {
@@ -208,12 +199,23 @@ router.put('/:pointId', async (req: AuthRequest, res, next) => {
     
     // Update defender statistics if gotBreak changed
     if (data.gotBreak !== undefined && data.gotBreak !== existingPoint.gotBreak) {
-      for (const matchup of point.matchups) {
-        if (matchup.defenderId) {
+      // Use selectedDefenderIds from the existing point
+      const selectedDefenders = existingPoint.selectedDefenderIds as string[];
+      for (const defenderId of selectedDefenders) {
+        const stats = await prisma.defenderStats.findUnique({
+          where: {
+            defenderId_gameId: {
+              defenderId: defenderId,
+              gameId: existingPoint.gameId,
+            },
+          },
+        });
+        
+        if (stats) {
           await prisma.defenderStats.update({
             where: {
               defenderId_gameId: {
-                defenderId: matchup.defenderId,
+                defenderId: defenderId,
                 gameId: existingPoint.gameId,
               },
             },
@@ -271,13 +273,23 @@ router.delete('/:pointId', async (req: AuthRequest, res, next) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    // Update defender statistics
-    for (const matchup of point.matchups) {
-      if (matchup.defenderId) {
+    // Update defender statistics based on selectedDefenderIds (Call Your Line)
+    const selectedDefenders = point.selectedDefenderIds as string[];
+    for (const defenderId of selectedDefenders) {
+      const stats = await prisma.defenderStats.findUnique({
+        where: {
+          defenderId_gameId: {
+            defenderId: defenderId,
+            gameId: point.gameId,
+          },
+        },
+      });
+      
+      if (stats) {
         await prisma.defenderStats.update({
           where: {
             defenderId_gameId: {
-              defenderId: matchup.defenderId,
+              defenderId: defenderId,
               gameId: point.gameId,
             },
           },
@@ -355,49 +367,9 @@ router.put('/:pointId/matchups/:matchupId', async (req: AuthRequest, res, next) 
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    // Update defender statistics if defender changed
-    if (data.defenderId !== undefined && data.defenderId !== matchup.defenderId) {
-      // Remove stats from old defender
-      if (matchup.defenderId) {
-        await prisma.defenderStats.update({
-          where: {
-            defenderId_gameId: {
-              defenderId: matchup.defenderId,
-              gameId: matchup.point.gameId,
-            },
-          },
-          data: {
-            pointsPlayed: { decrement: 1 },
-            ...(matchup.point.gotBreak && { breaks: { decrement: 1 } }),
-            ...(!matchup.point.gotBreak && { noBreaks: { decrement: 1 } }),
-          },
-        });
-      }
-      
-      // Add stats to new defender
-      if (data.defenderId) {
-        await prisma.defenderStats.upsert({
-          where: {
-            defenderId_gameId: {
-              defenderId: data.defenderId,
-              gameId: matchup.point.gameId,
-            },
-          },
-          update: {
-            pointsPlayed: { increment: 1 },
-            ...(matchup.point.gotBreak && { breaks: { increment: 1 } }),
-            ...(!matchup.point.gotBreak && { noBreaks: { increment: 1 } }),
-          },
-          create: {
-            defenderId: data.defenderId,
-            gameId: matchup.point.gameId,
-            pointsPlayed: 1,
-            breaks: matchup.point.gotBreak ? 1 : 0,
-            noBreaks: matchup.point.gotBreak ? 0 : 1,
-          },
-        });
-      }
-    }
+    // NOTE: We do NOT update defender statistics when matchup defender changes
+    // Statistics are based on selectedDefenderIds (Call Your Line), not matchups
+    // A defender gets credit for playing if they were selected, regardless of matchup assignment
     
     const updated = await prisma.matchup.update({
       where: { id: req.params.matchupId },
