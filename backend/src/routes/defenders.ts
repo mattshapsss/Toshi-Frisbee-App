@@ -153,7 +153,6 @@ router.put('/:defenderId', async (req: AuthRequest, res, next) => {
       where: { id: req.params.defenderId },
       data: {
         ...(data.name && { name: data.name }),
-        ...(data.jerseyNumber !== undefined && { jerseyNumber: data.jerseyNumber }),
         ...(data.position !== undefined && { position: data.position }),
         ...(data.notes !== undefined && { notes: data.notes }),
         ...(data.active !== undefined && { active: data.active }),

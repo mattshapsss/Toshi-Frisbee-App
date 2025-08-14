@@ -99,7 +99,7 @@ router.get('/game/:gameId/json', authenticateToken, async (req: AuthRequest, res
         name: game.team?.name,
         defenders: game.team?.defenders.map(d => ({
           name: d.name,
-          jerseyNumber: d.jerseyNumber
+          position: d.position
         }))
       },
       offensivePlayers: game.offensivePlayers.map(p => ({
@@ -249,8 +249,7 @@ router.get('/team/:teamId/roster/csv', authenticateToken, async (req: AuthReques
 
     const csvData = team.defenders.map(defender => ({
       'Name': defender.name,
-      'Jersey Number': defender.jerseyNumber || '',
-      'Position': defender.position || '',
+      'Position': defender.position || 'HYBRID',
       'Active': defender.active ? 'Yes' : 'No',
       'Notes': defender.notes || ''
     }));
@@ -308,7 +307,7 @@ router.get('/team/:teamId/stats', authenticateToken, async (req: AuthRequest, re
       defenderStats[defender.id] = {
         id: defender.id,
         name: defender.name,
-        jerseyNumber: defender.jerseyNumber,
+        position: defender.position,
         totalGames: 0,
         totalPoints: 0,
         totalBreaks: 0,
