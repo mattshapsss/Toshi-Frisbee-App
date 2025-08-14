@@ -114,6 +114,7 @@ model Game {
   sessions       GameSession[]
   activities     Activity[]
   selectedDefenders SelectedDefender[]
+  defenderStats  DefenderStats[]
   
   @@index([slug])
   @@index([shareCode])
@@ -214,6 +215,7 @@ model DefenderStats {
   turns          Int            @default(0)
   
   defender       Defender       @relation(fields: [defenderId], references: [id], onDelete: Cascade)
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
   
   @@unique([defenderId, gameId])
   @@index([defenderId])
