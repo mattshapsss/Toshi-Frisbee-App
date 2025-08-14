@@ -237,8 +237,7 @@ export const defendersApi = {
   create: async (data: {
     teamId: string;
     name: string;
-    jerseyNumber?: string;
-    position?: string;
+    position?: 'HANDLER' | 'HYBRID' | 'CUTTER';
     notes?: string;
   }) => {
     const response = await api.post('/defenders', data);
@@ -247,8 +246,7 @@ export const defendersApi = {
 
   bulkCreate: async (teamId: string, defenders: Array<{
     name: string;
-    jerseyNumber?: string;
-    position?: string;
+    position?: 'HANDLER' | 'HYBRID' | 'CUTTER';
   }>) => {
     const response = await api.post('/defenders/bulk', { teamId, defenders });
     return response.data;

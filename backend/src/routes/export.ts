@@ -105,7 +105,7 @@ router.get('/game/:gameId/json', authenticateToken, async (req: AuthRequest, res
       offensivePlayers: game.offensivePlayers.map(p => ({
         name: p.name,
         position: p.position,
-        jerseyNumber: p.jerseyNumber
+        jerseyNumber: p.jerseyNumber  // Offensive players still have jersey numbers
       })),
       points: game.points.map(p => ({
         number: p.pointNumber,
