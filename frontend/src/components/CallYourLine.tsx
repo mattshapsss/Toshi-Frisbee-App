@@ -164,7 +164,7 @@ export default function CallYourLine({
       </div>
       
       <div className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
           {/* Handlers Column */}
           <div>
             <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3">Handlers</h4>
@@ -181,7 +181,7 @@ export default function CallYourLine({
                     onClick={() => handleToggleDefender(defender.id)}
                     disabled={isPublic}
                     className={`
-                      relative w-full px-3 py-2 rounded-lg text-sm font-medium transition-all text-left
+                      relative w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all text-left
                       ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
                       ${isSelected 
                         ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 
@@ -220,7 +220,7 @@ export default function CallYourLine({
                     onClick={() => handleToggleDefender(defender.id)}
                     disabled={isPublic}
                     className={`
-                      relative w-full px-3 py-2 rounded-lg text-sm font-medium transition-all text-left
+                      relative w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all text-left
                       ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
                       ${isSelected 
                         ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 
@@ -259,7 +259,7 @@ export default function CallYourLine({
                     onClick={() => handleToggleDefender(defender.id)}
                     disabled={isPublic}
                     className={`
-                      relative w-full px-3 py-2 rounded-lg text-sm font-medium transition-all text-left
+                      relative w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all text-left
                       ${isPublic ? 'cursor-not-allowed' : 'cursor-pointer'}
                       ${isSelected 
                         ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm' 

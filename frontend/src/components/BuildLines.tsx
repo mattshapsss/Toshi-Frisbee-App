@@ -157,7 +157,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
             {/* Handlers Column */}
             <div>
               <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Handlers</h4>
@@ -168,7 +168,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                     <button
                       key={defender.id}
                       onClick={() => toggleDefender(defender.id)}
-                      className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                      className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all text-left ${
                         isSelected
                           ? 'bg-blue-500 text-white hover:bg-blue-600'
                           : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -195,7 +195,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                     <button
                       key={defender.id}
                       onClick={() => toggleDefender(defender.id)}
-                      className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                      className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all text-left ${
                         isSelected
                           ? 'bg-blue-500 text-white hover:bg-blue-600'
                           : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -222,7 +222,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                     <button
                       key={defender.id}
                       onClick={() => toggleDefender(defender.id)}
-                      className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                      className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all text-left ${
                         isSelected
                           ? 'bg-blue-500 text-white hover:bg-blue-600'
                           : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -273,7 +273,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                     {/* Handlers Column */}
                     <div>
                       <h4 className="text-xs font-semibold text-gray-600 uppercase mb-2">Handlers</h4>
@@ -284,7 +284,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                             <button
                               key={defender.id}
                               onClick={() => toggleDefender(defender.id, true)}
-                              className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                              className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all text-left ${
                                 isSelected
                                   ? 'bg-blue-500 text-white hover:bg-blue-600'
                                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -308,7 +308,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                             <button
                               key={defender.id}
                               onClick={() => toggleDefender(defender.id, true)}
-                              className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                              className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all text-left ${
                                 isSelected
                                   ? 'bg-blue-500 text-white hover:bg-blue-600'
                                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -332,7 +332,7 @@ export default function BuildLines({ teamId, defenders }: BuildLinesProps) {
                             <button
                               key={defender.id}
                               onClick={() => toggleDefender(defender.id, true)}
-                              className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-all text-left ${
+                              className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all text-left ${
                                 isSelected
                                   ? 'bg-blue-500 text-white hover:bg-blue-600'
                                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
