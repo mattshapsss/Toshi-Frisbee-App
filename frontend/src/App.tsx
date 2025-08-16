@@ -39,11 +39,14 @@ function App() {
           if (!currentTeam && teams.length > 0) {
             setCurrentTeam(teams[0]);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to load teams:', error);
-          // Clear team data on error
-          setCurrentTeam(null);
-          setTeams([]);
+          // Only clear team data if it's an auth error
+          if (error?.response?.status === 401) {
+            setCurrentTeam(null);
+            setTeams([]);
+          }
+          // For other errors (network, 500, etc), keep existing data
         }
       } else {
         // Clear team data when not authenticated

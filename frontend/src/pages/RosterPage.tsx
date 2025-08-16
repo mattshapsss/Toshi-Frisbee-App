@@ -25,25 +25,36 @@ export default function RosterPage() {
     setIsMounted(true);
   }, []);
 
-  // Fetch team
-  const { data: team } = useQuery({
+  // Fetch team with error handling
+  const { data: team, isLoading: teamLoading, error: teamError } = useQuery({
     queryKey: ['team', teamId],
     queryFn: () => teamsApi.get(teamId!),
-    enabled: !!teamId
+    enabled: !!teamId,
+    retry: false,
+    onError: (error: any) => {
+      console.error('Failed to load team:', error);
+      // Don't auto-logout on 403, just show error
+      if (error?.response?.status === 403) {
+        // User doesn't have access to this team
+        return;
+      }
+    }
   });
 
-  // Fetch defenders
-  const { data: defenders = [] } = useQuery({
+  // Fetch defenders with error handling
+  const { data: defenders = [], isLoading: defendersLoading } = useQuery({
     queryKey: ['defenders', teamId],
     queryFn: () => defendersApi.listByTeam(teamId!),
-    enabled: !!teamId
+    enabled: !!teamId && !!team,
+    retry: false
   });
 
   // Fetch all games for this team to calculate team-level stats
-  const { data: teamGames = [] } = useQuery({
+  const { data: teamGames = [], isLoading: gamesLoading } = useQuery({
     queryKey: ['games', teamId],
     queryFn: () => gamesApi.list({ teamId }),
-    enabled: !!teamId
+    enabled: !!teamId && !!team,
+    retry: false
   });
 
   // Calculate team-level statistics
@@ -182,10 +193,45 @@ export default function RosterPage() {
     'asc'
   );
 
-  if (!team) {
+  // Handle loading state
+  if (teamLoading || !isMounted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (teamError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">Failed to load team</div>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle missing team
+  if (!team) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-600 mb-4">Team not found</div>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Go to Home
+          </button>
+        </div>
       </div>
     );
   }

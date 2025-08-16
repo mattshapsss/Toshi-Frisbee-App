@@ -30,6 +30,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Only handle 401 for token refresh, not 403
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -47,11 +48,16 @@ api.interceptors.response.use(
           return api(originalRequest);
         }
       } catch (refreshError) {
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
+        // Only logout if refresh token is invalid or expired
+        if (refreshError.response?.status === 401) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        }
       }
     }
 
+    // Don't auto-logout on 403 (forbidden) - user just doesn't have access to this resource
+    // Let the component handle the error
     return Promise.reject(error);
   }
 );
