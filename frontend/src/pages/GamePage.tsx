@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Minus, ArrowLeft, Users, BarChart3, Download, Clock, Save, Share2, CheckCircle, PlayCircle, RotateCcw } from 'lucide-react';
+import { Plus, Minus, ArrowLeft, Users, BarChart3, Download, Clock, Save, Share2, CheckCircle, PlayCircle } from 'lucide-react';
 import { gamesApi, defendersApi, pointsApi, selectedDefendersApi } from '../lib/api';
 import { socketManager } from '../lib/socket';
 import { useAuthStore } from '../stores/authStore';
@@ -311,55 +311,6 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
         ? prev.filter(id => id !== pointId)
         : [...prev, pointId]
     );
-  };
-
-  const handleReloadPoint = async (point: any) => {
-    if (!game) return;
-    
-    try {
-      // 1. Clear existing Current Point defenders
-      await gamesApi.clearCurrentPointDefenders(game.id);
-      
-      // 2. Restore Call Your Line selections
-      if (point.selectedDefenderIds && point.selectedDefenderIds.length > 0) {
-        await selectedDefendersApi.updateByGame(game.id, point.selectedDefenderIds);
-        setSelectedDefenderIds(point.selectedDefenderIds);
-      }
-      
-      // 3. Restore Current Point matchups
-      if (point.matchups && point.matchups.length > 0) {
-        // Process matchups sequentially to avoid conflicts
-        for (const matchup of point.matchups) {
-          if (matchup.defenderId) {
-            // Check if the offensive player still exists and is active
-            const offensivePlayer = game.offensivePlayers?.find(
-              (p: any) => p.id === matchup.offensivePlayerId && !p.isBench
-            );
-            if (offensivePlayer) {
-              await gamesApi.setCurrentPointDefender(
-                game.id, 
-                matchup.offensivePlayerId, 
-                matchup.defenderId
-              );
-            }
-          }
-        }
-      }
-      
-      // 4. Refresh the game data
-      queryClient.invalidateQueries({ queryKey: ['game', gameId || shareCode] });
-      queryClient.invalidateQueries({ queryKey: ['selectedDefenders', game.id] });
-      
-      // 5. Set UI state
-      setUnsavedChanges(true);
-      setPointStartTime(new Date());
-      
-      // 6. Provide visual feedback
-      // You could add a toast notification here if you have one
-      console.log(`Reloaded Point #${point.pointNumber || 'Unknown'}`);
-    } catch (error) {
-      console.error('Error reloading point:', error);
-    }
   };
 
   const getPositionColor = (position: string) => {
@@ -1948,28 +1899,15 @@ export default function GamePage({ isPublic = false }: GamePageProps) {
                           </span>
                         </div>
                         {!isPublic && (
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReloadPoint({ ...point, pointNumber });
-                              }}
-                              className="p-1 text-blue-600 hover:text-blue-800 rounded"
-                              title="Reload this point"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deletePointMutation.mutate(point.id);
-                              }}
-                              className="p-1 text-red-600 hover:text-red-800 rounded"
-                              title="Delete this point"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePointMutation.mutate(point.id);
+                            }}
+                            className="p-1 text-red-600 hover:text-red-800 rounded"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
                         )}
                       </div>
                     </div>
